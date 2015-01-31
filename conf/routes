@@ -4,7 +4,11 @@
 
 module:testrunner
 
+# Index
 GET     /                                       App.Index
+
+# Submit contact form
+POST	/contact/:id 							App.Contact
 
 # Ignore favicon requests
 GET     /favicon.ico                            404
