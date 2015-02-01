@@ -8,7 +8,7 @@ module:testrunner
 GET     /                                       App.Index
 
 # Submit contact form
-GET    /contact/:id           					App.Contact
+GET    /contact/:id           					Contact.Contact
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

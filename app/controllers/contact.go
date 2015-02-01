@@ -3,12 +3,11 @@ package controllers
 import (
 	"os"
 	"fmt"
-	"regexp"
 	mandrill "github.com/keighl/mandrill"
 	"github.com/revel/revel"
 )
 
-type App struct {
+type Contact struct {
 	*revel.Controller
 }
 
@@ -16,11 +15,7 @@ type Form struct {
 	Name, Email, Subject, Message string
 }
 
-func (c App) Index() revel.Result {
-	return c.Render()
-}
-
-func (c App) Contact() revel.Result {
+func (c Contact) Contact() revel.Result {
 	email := c.Params.Get("id")
 	form := Form{Name: c.Params.Get("name"),
 		Email:   c.Params.Get("email"),
@@ -32,16 +27,6 @@ func (c App) Contact() revel.Result {
 	} else {
 		return c.Redirect(App.Failure)
 	}
-}
-
-func (c App) Success() revel.Result {
-	c.Response.Status = 200
-	return c.Render()
-}
-
-func (c App) Failure() revel.Result {
-	c.Response.Status = 400
-	return c.Render()
 }
 
 func send_email(destination string, form Form) bool {
@@ -71,11 +56,15 @@ func send_email(destination string, form Form) bool {
 	if apiError != nil {
 		return false
 	}
-	if responses.Status == "invalid" {
-		return false
+	
+	length := len(responses)
+	for i := 0; i < length; i++ {
+		if responses[i].Status == "rejected" {
+			return false
+		} else if responses[i].Status == "invalid" {
+			return false
+		}
 	}
-	if responses.Status == "rejected" {
-		return false
-	}
+	
 	return true
 }
