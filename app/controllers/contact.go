@@ -3,6 +3,7 @@ package controllers
 import (
 	mandrill "github.com/keighl/mandrill"
 	"github.com/revel/revel"
+	"fmt"
 )
 
 type Contact struct {
@@ -57,9 +58,10 @@ func sendEmail(destination string, form Form) bool {
 	responses, apiError, err := client.MessagesSend(message)
 	
 	if err != nil {
-		return false
+		panic(err)
 	}
 	if apiError != nil {
+		fmt.Printf("\n\n\n\nAPI ERROR\n%s\n\n\n\n", apiError)
 		return false
 	}
 	
@@ -71,6 +73,5 @@ func sendEmail(destination string, form Form) bool {
 			return false
 		}
 	}
-	
 	return true
 }
