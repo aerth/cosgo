@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"os"
-	"fmt"
 	mandrill "github.com/keighl/mandrill"
 	"github.com/revel/revel"
 )
@@ -15,27 +13,35 @@ type Form struct {
 	Name, Email, Subject, Message string
 }
 
+type recipientRecord struct {
+	Token, Email, MonthlyCount, CurrentMonth string
+}
+
 func (c Contact) Contact() revel.Result {
 	email := c.Params.Get("id")
 	form := Form{Name: c.Params.Get("name"),
 		Email:   c.Params.Get("email"),
 		Subject: c.Params.Get("subject"),
 		Message: c.Params.Get("message")}
-	successfully_sent := send_email(email, form)
-	if successfully_sent {
+	sent := sendEmail(email, form)
+	if sent {
 		return c.Redirect(App.Success)
 	} else {
 		return c.Redirect(App.Failure)
 	}
 }
 
-func send_email(destination string, form Form) bool {
-	MANDRILL_KEY := os.Getenv("MANDRILL_KEY")
-	if len(MANDRILL_KEY) == 0 {
-		fmt.Printf("API Key for Mandrill was not found.\nSet the environment variable MANDRILL_KEY with a valid API key.")
-		return false
+func sendEmail(destination string, form Form) bool {
+	
+	mandrillKey, found := revel.Config.String("mandrillKey")
+	if !found {
+		panic("Mandrill API key not set in app.conf.")
 	}
-	client := mandrill.ClientWithKey(MANDRILL_KEY)
+	if len(mandrillKey) == 0 {
+		panic("Mandrill API key is empty.")
+	}
+	
+	client := mandrill.ClientWithKey(mandrillKey)
 
 	message := &mandrill.Message{}
 	message.AddRecipient(destination, destination, "to")
