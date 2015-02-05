@@ -7,6 +7,9 @@ module:testrunner
 # Index
 GET     /                                       App.Index
 
+# Submit email to create token
+GET	   /register								Contact.Register
+
 # Submit contact form
 GET    /contact/:id           					Contact.Contact
 
