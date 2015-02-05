@@ -1,5 +1,20 @@
 {{set . "title" "Static Contact"}}
 {{template "header.html" .}}
+<script>
+$(function() {
+  $("#contact-form").on("submit", function(e) {
+    e.preventDefault();
+    $.ajax({
+        url: $(this).attr("action"),
+        type: 'GET',
+        data: $(this).serialize(),
+        success: function(data) {
+            $("#contact-submit").val('Form successfully submitted!')
+        }
+    });
+  });
+});
+</script>
 
 <header class="hero-unit" style="background-color:#A9F16C">
   <div class="container">
@@ -14,21 +29,20 @@
 
 <div class="container">
 <div class="row">
-  <div class="span6">
-    {{template "flash.html" .}}
-    <form action="register">
-        <input type="text" name="email" placeholder="email"/><br/>
-        <input type="submit" value="Generate a token code!" />
-    </form>
-  </div>
+  <div class="span12">
+    <p>Static Contact is the easiest way to add a contact form to any static site. <br>All that is required is to change the "submit" attribute of a form. Here is an example:</p>
+    <script src="https://gist.github.com/munrocape/9d9f2df6609907516f05.js"></script>
+    <p>Want to disable the redirect? Here is a nifty piece of javascript (that requires jQuery). Include this anywhere on the HTML page itself or within a referenced javascript file.</p>
+    <script src="https://gist.github.com/munrocape/1d7c69cd993116ea52f3.js"></script>
+</div>
 </div>
   <div class="row">
     <div class="span6">
-      <form action="contact/zach.munrocape@gmail.com">
-          <input type="text" name="name" placeholder="name"/><br/>
-          <input type="text" name="email" placeholder="email"/><br/>
-          <input type="text" name="message" placeholder="message"/><br/>
-          <input type="submit" value="Say hello!" />
+      <form id="contact-form" action="contact/zach.munrocape@gmail.com">
+          <input type="text" name="name" placeholder="name" required/><br/>
+          <input type="text" name="email" placeholder="email" required/><br/>
+          <input type="text" name="message" placeholder="message" required/><br/>
+          <input id="contact-submit" type="submit" value="Say hello!" />
       </form>
     </div>
   </div>
