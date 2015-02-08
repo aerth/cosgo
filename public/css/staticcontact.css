@@ -52,8 +52,12 @@ form{
 	margin-top:5%;
 }
 
-.text-background{
+.text-background-action{
 	background-color:#BDE4A7;
+}
+
+.text-background-method{
+	background-color:#F7AF9D;
 }
 
 ::selection {
