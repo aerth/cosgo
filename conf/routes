@@ -4,6 +4,10 @@
 
 module:testrunner
 
+
+# Submit contact form
+POST   /:id                                     Contact.Contact
+
 # Index
 GET     /                                       App.Index
 
@@ -11,7 +15,8 @@ GET     /                                       App.Index
 GET	   /register								Contact.Register
 
 # Submit contact form
-GET    /contact/:id           					Contact.Contact
+GET    /contact/:id           					Contact.ContactA
+
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

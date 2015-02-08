@@ -113,13 +113,27 @@ type recipientRecord struct {
 	CurrentMonth int
 }
 
-func (c Contact) Contact() revel.Result {
+func (c Contact) ContactA() revel.Result {
 	email := c.Params.Get("id")
 	form := Form{Name: c.Params.Get("name"),
 		Email:   c.Params.Get("email"),
 		Subject: c.Params.Get("subject"),
 		Message: c.Params.Get("message")}
 	sent := sendEmail(email, form)
+	if sent {
+		return c.Redirect(App.Success)
+	} else {
+		return c.Redirect(App.Failure)
+	}
+}
+
+func (c Contact) Contact(id string, name string, email string, subject string, message string) revel.Result {
+	form := Form{Name: name,
+		Email:   email,
+		Subject: subject,
+		Message: message}
+	fmt.Printf("destination: %s\nname: %s\nemail: %s\nsubject: %s\nmessage: %s\n", id, name, email, subject, message)
+	sent := sendEmail(id, form)
 	if sent {
 		return c.Redirect(App.Success)
 	} else {

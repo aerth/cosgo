@@ -18,22 +18,22 @@
 
     ga('create', 'UA-59495915-1', 'auto');
     ga('send', 'pageview');
-
   </script>
   <script>
-    $(function() {
-      $("#contact-form").on("submit", function(e) {
-        e.preventDefault();
-        $.ajax({
-            url: $(this).attr("action"),
-            type: 'GET',
-            data: $(this).serialize(),
-            success: function(data) {
-                $("#contact-submit").text('Form submitted!')
-            }
-        });
+  $(function() {
+    $("#contact-form").on("submit", function(e) {
+      e.preventDefault();
+      $.ajax({
+          url: $(this).attr("action"),
+          type: 'POST',
+          data: $(this).serialize(),
+          success: function(data) {
+              $("#contact-submit").text('Form submitted!')
+              $("#contact-submit").prop("disabled", "true")
+          }
       });
     });
+  });
   </script>
   <body>
     <div class="container-fluid">
@@ -57,7 +57,7 @@
                     <div class="col-md-12">
                         <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
                           <h4><i class="fa fa-bolt"></i> Quick to set up</h4>
-                          <p>Simply change the action attribute of a form.</p>
+                          <p>Change one attribute on the form and it is ready.</p>
                         </div>
                         <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
                           <h4><i class="fa fa-check-square-o"></i> Perfect for any page</h4>
@@ -65,7 +65,7 @@
                         </div>
                         <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
                           <h4><i class="fa fa-star"></i> Absolutely free</h4>
-                          <p>Yep, and always will be.</p>
+                          <p>Yep, and always will be. Shoutout to Mandrill and Heroku's free tiers.</p>
                         </div>
                     </div>
                 </div>
@@ -73,28 +73,25 @@
         </div>
     </div>
     <div id="how-to" class="container how-to">
-      <p>All that is required is to set the action attribute on a HTML form to be <span class="text-background">http://www.staticcontact.com/contact/{your_email}</span></p>
+      <p>The only step required is to set the action attribute of a form to <span class="text-background">http://www.staticcontact.com/{your_email}</span> and have the method be <span class="text-background">POST</span></p>
       <p>Below is a sample contact form. Note that the name, email, and message elements (and their name attributes) are required.</p>
-      <p>Typically, a form submission redirects a user. The below javascript submits the form but does not redirect the user.</p>
       <script src="https://gist.github.com/munrocape/9d9f2df6609907516f05.js"></script>
-      
+      <p>Typically, a form submission redirects a user. The below javascript submits the form but does not redirect the user.</p>
       <script src="https://gist.github.com/munrocape/1d7c69cd993116ea52f3.js"></script>
  
     </div>
     <div id="try-it-out" class="container">
-
-      <form id="contact-form" action="http://www.staticcontact.com/contact/zach@staticcontact.com">
+      <form id="contact-form" action="/zach.munrocape@gmail.com" method="POST">
       <legend class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4">Any feedback?</legend>
         <div class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4 form-group">
-          <input class="form-control" id="name" name="name" type="name" placeholder="Name" required>
+          <input class="form-control" id="name" name="name" type="name" placeholder="Name">
         </div>
         <div class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4 form-group">
-          <input class="form-control" id="email" name="email" type="email"  placeholder="Email" required>
+          <input class="form-control" id="email" name="email" type="email"  placeholder="Email" >
         </div>
         <div class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4 form-group">
-          <textarea class="form-control" id="message" name="message" type="message" rows="5"placeholder="Message" required></textarea>
+          <textarea class="form-control" id="message" name="message" type="message" rows="5"placeholder="Message" ></textarea>
         </div>
-
         <button id="contact-submit" type="submit" class="col-sm-4 col-sm-offset-4 col-md-2 col-md-offset-5 btn btn-default">Submit</button>
       </form>
     </div>

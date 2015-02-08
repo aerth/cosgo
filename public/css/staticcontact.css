@@ -33,10 +33,14 @@ form{
 	margin-top:5%;
 }
 
-.accent{
-	color: #8B80F9;
+.text-background{
+	background-color:#BDE4A7;
 }
 
-.text-background{
-	background-color:#80FFE8;
+::selection {
+  background: #FCCA46;
+}
+
+::-moz-selection {
+  background: #FCCA46;
 }
