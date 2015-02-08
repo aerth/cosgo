@@ -57,7 +57,7 @@ $ go get gopkg.in/mgo.v2/bson
 [Revel](http://revel.github.io/) is the web framework used for the applicaiton. Mandrill is the mandrill API wrapper used to send emails. Mgo is a mongo driver for Go.
 
 ###Get accounts for services
-This requires an account to [Heroku](https://heroku.com), an API key for [Mandrill](https://mandrillapp.com), and a [MongoLab](https://mongolab.com) connection. 
+This requires an account to [Heroku](https://heroku.com), an API key for [Mandrill](https://mandrillapp.com), and a Mongo connection. I used [MongoLab](https://mongolab.com)'s free service. I originally was planning on enforcing a maximum submissions per month but given the ceiling on Mandrill's monthly quota has not yet been reached this is not required.
 
 Visit those sites and create accounts if you do not yet have them.
 
