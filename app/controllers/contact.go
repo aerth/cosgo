@@ -132,7 +132,6 @@ func (c Contact) Contact(id string, name string, email string, subject string, m
 		Email:   email,
 		Subject: subject,
 		Message: message}
-	fmt.Printf("destination: %s\nname: %s\nemail: %s\nsubject: %s\nmessage: %s\n", id, name, email, subject, message)
 	sent := sendEmail(id, form)
 	if sent {
 		return c.Redirect(App.Success)
