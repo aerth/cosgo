@@ -2,7 +2,12 @@ package controllers
 
 import (
 	"fmt"
+	"bytes"
+	"strconv"
+	"strings"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	mandrill "github.com/keighl/mandrill"
 	"time"
 	"github.com/revel/revel"
@@ -14,6 +19,7 @@ var (
     mgoSession     *mgo.Session
     tokenCollection *mgo.Collection
     mandrillKey string
+    mandrillApiUrl string
 )
 
 func getSession () *mgo.Session {
@@ -21,6 +27,36 @@ func getSession () *mgo.Session {
     	mgoSession = dialMongo()
     }
     return mgoSession.Clone()
+}
+
+func canSendEmail () bool {
+	if mandrillApiUrl == "" {
+		mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
+	}
+	user_count_url := mandrillApiUrl + "users/info.json"
+	var jsonStr = []byte(`
+	{
+	    "key": "` + getMandrillKey() + `"
+	}`)
+
+    req, err := http.NewRequest("POST", user_count_url, bytes.NewBuffer(jsonStr))
+    req.Header.Set("X-Custom-Header", "key")
+    req.Header.Set("Content-Type", "application/json")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    body, _ := ioutil.ReadAll(resp.Body)
+    split := strings.SplitAfter(string(body), "last_30_days\":{\"sent\":")
+    sent_str := strings.SplitAfter(split[1], ",")[0]
+    send_count, _ := strconv.Atoi(sent_str[:len(sent_str) - 1])
+    if send_count >= 10000 {
+    	return false
+    }
+    return true
 }
 
 func getUserCollection () *mgo.Collection {
@@ -166,6 +202,9 @@ func incrementSentEmailCount(email string) bool {
 }
 
 func sendEmail(destinationEmail string, form Form) bool {
+	if !canSendEmail() {
+		return false
+	}
 	emailKey := getMandrillKey()
 
 	client := mandrill.ClientWithKey(emailKey)
