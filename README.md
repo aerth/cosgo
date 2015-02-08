@@ -38,4 +38,37 @@ $(function() {
 
 ## Roll your own
 
-It is quite easy to deploy your own version of this. What is required is a Heroku and Mandrill account. This project has a connection to a MongoLab database - this was going to be used to store sends per month for a given user if the volume were to approach the 12,000 Mandrill maximum.
+This guide assumes a [Go environment](http://golang.org/doc/install) is already set up.
+
+###First, clone the repo
+
+```
+$ git clone https://github.com/munrocape/staticcontact
+```
+
+###Next, get the relevant dependencies
+```
+$ go get github.com/revel/revel
+$ go get github.com/keighl/mandrill
+$ go get gopkg.in/mgo.v2
+$ go get gopkg.in/mgo.v2/bson
+```
+
+[Revel](http://revel.github.io/) is the web framework used for the applicaiton. Mandrill is the mandrill API wrapper used to send emails. Mgo is a mongo driver for Go.
+
+###Get accounts for services
+This requires an account to [Heroku](https://heroku.com), an API key for [Mandrill](https://mandrillapp.com), and a [MongoLab](https://mongolab.com) connection. 
+
+Visit those sites and create accounts if you do not yet have them.
+
+###Configure environment variables
+`cd` into your local staticcontact directory. The linked buildpack is for revel applications.
+```
+$ heroku create -b https://github.com/robfig/heroku-buildpack-go-revel.git
+$ heroku config:set MANDRILL_KEY={You get this from the Mandrill dashboard}
+$ heroku config:set STATIC_CONTACT_MONGO_URI={Mongo lab URI, with username and password}
+$ heroku config:set STATIC_CONTACT_APP_SECRET={Some random string}
+$ git push heroku master
+```
+
+Voila! Heroku should print out the URL of the corresponding application. Now, for a given contact form, point the action method to be `{heroku_url}/{your_email}`.
