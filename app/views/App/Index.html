@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" href="/public/css/staticcontact.css">
     <title>Static Contact</title>
     <link rel="shortcut icon" href="/public/img/staticcontact.ico">
@@ -35,37 +36,48 @@
     });
   </script>
   <body>
-    <div class="jumbotron">
-      <div class="container">
-        <h1>Static Contact</h1>
-        <h3>The <span class="accent">easiest</span> way to add a contact form to any website -</h3>
-        <h3>have the form sent directly to your inbox.</h3>
-        <a href="#add-one"><button class="btn btn-primary">Show me how!</button></a>
-      </div>
+    <div class="container-fluid">
+        <div class="row intro">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h1>Static Contact</h1>
+                        <h3>Have a contact form sent directly to your inbox -</h3>
+                        <h3>No backend required.</h3>
+                        <a href="#how-to"><button class="btn btn-primary">Show me how!</button></a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="what-is-it" class="container">
-      <p class="center-text"><i class="fa fa-angle-right"></i> Copying and pasting an email address or launching a program can interrupt a user's experience.</p>
-      <p class="center-text"><i class="fa fa-angle-right"></i> An inline form maintains user focus and increases engagement.</p>
-      <div class="row">
-        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
-          <h4><i class="fa fa-bolt"></i> Quick to set up</h4>
-          <p>Simply change the action attribute of a form.</p>
+    <div class="container-fluid">
+        <div class="row fact-sheet">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
+                          <h4><i class="fa fa-bolt"></i> Quick to set up</h4>
+                          <p>Simply change the action attribute of a form.</p>
+                        </div>
+                        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
+                          <h4><i class="fa fa-check-square-o"></i> Perfect for any page</h4>
+                          <p>Static Contact is the easiest and fastest way to add a contact form to any site.</p>
+                        </div>
+                        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
+                          <h4><i class="fa fa-star"></i> Absolutely free</h4>
+                          <p>Yep, and always will be.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
-          <h4><i class="fa fa-check-square-o"></i> Perfect for any page</h4>
-          <p>Static Contact is the easiest and fastest way to set up a contact form on any site, regardless of hosting provider or tech stack.</p>
-        </div>
-        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
-          <h4><i class="fa fa-star"></i> Absolutely free</h4>
-          <p>Yep, and always will be. Also, messages are not stored by the Static Contact server but are by Mandrill (the mailing service) for up to 24 hours.</p>
-        </div>
-      </div>
     </div>
-    <div id="add-one" class="container">
-      <p>All that is required is to set the action attribute on a HTML form to be "http://www.staticcontact.com/contact/{your_email}"</p>
-      <p>The name, email, and message elements are required and must have those names. The subject element is optional.</p>
+    <div id="how-to" class="container how-to">
+      <p>All that is required is to set the action attribute on a HTML form to be <span class="text-background">http://www.staticcontact.com/contact/{your_email}</span></p>
+      <p>Below is a sample contact form. Note that the name, email, and message elements (and their name attributes) are required.</p>
+      <p>Typically, a form submission redirects a user. The below javascript submits the form but does not redirect the user.</p>
       <script src="https://gist.github.com/munrocape/9d9f2df6609907516f05.js"></script>
-      <p>Typically, on submission of a form, a user is redirected to an alternate page. The javascript below (which requires jQuery) will submit the form but not redirect the user.</p>
+      
       <script src="https://gist.github.com/munrocape/1d7c69cd993116ea52f3.js"></script>
  
     </div>
@@ -90,7 +102,7 @@
       <div class="row">
         <div class="col-md-12">
           <a href="https://www.github.com/munrocape/staticcontact"><h4>View the project on GitHub</h4></a>
-          <p>Made with <i class="fa fa-heart"></i> in Bermuda by @munrocape</p>
+          <p>Made with <i class="fa fa-heart"></i> in Bermuda by <a href="http://twitter.com/munrocape">@munrocape<a></p>
         </div>
       </div>
     </div>

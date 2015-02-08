@@ -1,13 +1,25 @@
-html{
-	font-family: 'Open Sans', sans-serif;
+html, body{
+	font-family: 'Montserrat', sans-serif;
 }
 
-.jumbotron{
+.intro{
+	padding-top:2%;
+	padding-bottom:2%;
 	text-align:center;
 	color:#232C33;
 	background-color:#CCD6EB;
 }
 
+.fact-sheet{
+	padding-top:2%;
+	padding-bottom:2%;
+	background-color:#FFF3BB;
+}
+
+.how-to{
+	padding-top:2%;
+	text-align:center;
+}
 .col-md-4, .col-md-6, .col-md-8, .col-md-12{
 	text-align:center;
 }
@@ -25,6 +37,6 @@ form{
 	color: #8B80F9;
 }
 
-.center-text{
-	text-align:center;
+.text-background{
+	background-color:#80FFE8;
 }
