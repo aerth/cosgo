@@ -65,7 +65,7 @@
                         </div>
                         <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-4">
                           <h4><i class="fa fa-star"></i> Absolutely free</h4>
-                          <p>Yep, and always will be. Shoutout to Mandrill and Heroku's free tiers.</p>
+                          <p>Yep, always will be. Shoutout Mandrill & Heorku.</p>
                         </div>
                     </div>
                 </div>
@@ -73,33 +73,54 @@
         </div>
     </div>
     <div id="how-to" class="container how-to">
-      <p>The only step required is to set the action attribute of a form to <span class="text-background">http://www.staticcontact.com/{your_email}</span> and have the method be <span class="text-background">POST</span></p>
+      <p>The only step required is to set the action and method attribute of a form to <span class="text-background">http://www.staticcontact.com/{your_email}</span> and <span class="text-background">POST</span>, respectively.</p>
       <p>Below is a sample contact form. Note that the name, email, and message elements (and their name attributes) are required.</p>
       <script src="https://gist.github.com/munrocape/9d9f2df6609907516f05.js"></script>
       <p>Typically, a form submission redirects a user. The below javascript submits the form but does not redirect the user.</p>
       <script src="https://gist.github.com/munrocape/1d7c69cd993116ea52f3.js"></script>
  
     </div>
-    <div id="try-it-out" class="container">
+    <div class="container-fluid">
+
+        <div class="row faq">
+        
+            <div class="container">
+                <div> <h3 class="faq-header">FAQ</h3> </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-6">
+                          <h4><i class="fa fa-database"></i> Are messages stored?</h4>
+                          <p>Never by Static Contact.</p><p> Mandrill, the emailing service, may retain a copy for up to 24 hours.</p>
+                        </div>
+                        <div class="col-sm-7 col-sm-offset-3 col-md-offset-0 col-md-6">
+                          <h4><i class="fa fa-github"></i> Is the code anywhere?</h4>
+                          <p>The source code, including instructions to deploy your own, is on <a href="https://www.github.com/munrocape/staticcontact">GitHub</a>.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="try-it-out" class="container feedback">
       <form id="contact-form" action="/zach.munrocape@gmail.com" method="POST">
       <legend class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4">Any feedback?</legend>
         <div class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4 form-group">
-          <input class="form-control" id="name" name="name" type="name" placeholder="Name">
+          <input class="form-control" id="name" name="name" type="name" placeholder="Name" required>
         </div>
         <div class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4 form-group">
-          <input class="form-control" id="email" name="email" type="email"  placeholder="Email" >
+          <input class="form-control" id="email" name="email" type="email"  placeholder="Email" required>
         </div>
         <div class="col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4 form-group">
-          <textarea class="form-control" id="message" name="message" type="message" rows="5"placeholder="Message" ></textarea>
+          <textarea class="form-control" id="message" name="message" type="message" rows="5"placeholder="Message" required></textarea>
         </div>
         <button id="contact-submit" type="submit" class="col-sm-4 col-sm-offset-4 col-md-2 col-md-offset-5 btn btn-default">Submit</button>
       </form>
     </div>
+
     <div id="footer" class="container">
       <div class="row">
         <div class="col-md-12">
-          <a href="https://www.github.com/munrocape/staticcontact"><h4>View the project on GitHub</h4></a>
-          <p>Made with <i class="fa fa-heart"></i> in Bermuda by <a href="http://twitter.com/munrocape">@munrocape<a></p>
+          <p>Made with <i class="fa fa-heart"></i> in Bermuda by <a href="http://twitter.com/munrocape">@munrocape<a></p><br><br>
         </div>
       </div>
     </div>

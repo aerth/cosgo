@@ -16,12 +16,31 @@ html, body{
 	background-color:#FFF3BB;
 }
 
+.faq{
+	background-color:#CCD6EB;
+	padding-bottom:2%;
+}
+
+.feedback{
+	padding-top:2%;
+	padding-bottom:2%;
+}
+
+.footer{
+	padding-bottom:3%;
+}
+
 .how-to{
 	padding-top:2%;
 	text-align:center;
 }
 .col-md-4, .col-md-6, .col-md-8, .col-md-12{
 	text-align:center;
+}
+
+.faq-header{
+	text-align:center;
+	text-decoration: underline;
 }
 
 form{
