@@ -1,0 +1,1 @@
+web: staticcontact -port=$PORT
