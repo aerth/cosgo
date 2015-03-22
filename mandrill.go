@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	mandrill "github.com/keighl/mandrill"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
+	"log"
 )
 
 type Form struct {
@@ -36,6 +36,7 @@ func canSendEmail() bool {
 	sent_str := strings.SplitAfter(split[1], ",")[0]
 	send_count, _ := strconv.Atoi(sent_str[:len(sent_str)-1])
 	if send_count >= 10000 {
+		log.Fatal("Monthly quota reached")
 		return false
 	}
 	return true
@@ -59,10 +60,9 @@ func sendEmail(destinationEmail string, form *Form) bool {
 	responses, apiError, err := client.MessagesSend(message)
 
 	if err != nil {
-		panic(err)
+		return false
 	}
 	if apiError != nil {
-		fmt.Printf("\n\n\n\nAPI ERROR\n%s\n\n\n\n", apiError)
 		return false
 	}
 
