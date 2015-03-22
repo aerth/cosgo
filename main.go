@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"io/ioutil"
 	"strings"
 )
 
@@ -31,27 +30,13 @@ func main() {
 	log.Println("Starting Server on", *port)
 	r := mux.NewRouter()
 	r.HandleFunc("/", HomeHandler)
-	r.HandleFunc("/staticcontact.css", CssHandler)
-	r.HandleFunc("/staticcontact.ico", AssetHandler)
-
 	r.HandleFunc("/{email}", EmailHandler)
 	http.Handle("/", r)
 	http.ListenAndServe(":"+*port, r)
 }
 
 func HomeHandler(rw http.ResponseWriter, r *http.Request) {
-	data, _ := ioutil.ReadFile("index.html")
-	rw.Write([]byte(data))
-}
-
-func CssHandler(rw http.ResponseWriter, r *http.Request) {
-	data, _ := ioutil.ReadFile("staticcontact.css")
-	rw.Write([]byte(data))
-}
-
-func AssetHandler(rw http.ResponseWriter, r *http.Request) {
-	data, _ := ioutil.ReadFile("staticcontact.ico")
-	rw.Write([]byte(data))
+	http.Redirect(rw, r, "http://munrocape.github.io/staticcontact/", 301)
 }
 
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
