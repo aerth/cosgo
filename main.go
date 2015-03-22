@@ -36,8 +36,7 @@ func main() {
 
 	r.HandleFunc("/{email}", EmailHandler)
 	http.Handle("/", r)
-	http.ListenAndServe(":8080", r)
-	log.Fatal(http.ListenAndServe(":"+*port, nil))
+	http.ListenAndServe(":"+*port, r)
 }
 
 func HomeHandler(rw http.ResponseWriter, r *http.Request) {
