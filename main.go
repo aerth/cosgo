@@ -9,27 +9,44 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"math/rand"
+	"time"
 )
 
 var (
 	mandrillApiUrl string
 	mandrillKey    string
+	casgoDestination string
+	casgoAPIKey string
 )
 
 func main() {
 
-
+	if os.Getenv("CASGO_API_KEY") == "" {
+		log.Println("Generating Random API Key...")
+		casgoAPIKey = GenerateAPIKey(20)
+		log.Println("CASGO_API_KEY:",casgoAPIKey)
+	}else{
+		casgoAPIKey = os.Getenv("CASGO_API_KEY")
+	}
 	port := flag.String("port", "8080", "HTTP Port to listen on")
 	flag.Parse()
 
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
 	mandrillKey = os.Getenv("MANDRILL_KEY")
 	if mandrillKey == "" {
-		log.Fatal("MANDRILL_KEY is Crucial.")
+		log.Fatal("MANDRILL_KEY is Crucial. Type: export MANDRILL_KEY=123456789")
 		os.Exit(1)
 	}
 
-	log.Println("Starting Server on", *port)
+
+	casgoDestination = os.Getenv("CASGO_DESTINATION")
+	if casgoDestination == "" {
+		log.Fatal("CASGO_DESTINATION is Crucial. Type: export CASGO_DESTINATION=your@email.com")
+		os.Exit(1)
+	}
+
+	log.Printf("Starting Server on http://127.0.0.1:%s", *port)
 	log.Println("Switching Logs to debug.log")
 	OpenLog()
 	log.Println("Server on", *port)
@@ -43,12 +60,33 @@ func main() {
 
 	r.HandleFunc("/{whatever}", LoveHandler)
 
-	r.HandleFunc("/em/{email}/", EmailHandler)
+	r.HandleFunc("/DUMMY-RANDOM/{email}/", EmailHandler)
 	http.Handle("/", r)
 	//http.NotFound() NotFoundHandler()
 	http.ListenAndServe(":"+*port, r)
 
 }
+
+
+
+// RANDOM STUFF
+
+
+func init() {
+		rand.Seed(time.Now().UnixNano())
+}
+
+var runes = []rune("____ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890123456789012345678901234567890")
+
+func GenerateAPIKey(n int) string {
+		b := make([]rune, n)
+		for i := range b {
+				b[i] = runes[rand.Intn(len(runes))]
+		}
+return string(b)
+
+}
+
 
 
 // This function opens a log file. "debug.log"
@@ -60,14 +98,15 @@ if err != nil {
 		log.Fatal("MANDRILL_KEY is Crucial.")
 		os.Exit(1)
 }
-//defer log.Close()
+
 log.SetOutput(f)
 }
 
 // This is the home page it is blank. "This server is broken"
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	 fmt.Fprint(w, "")
+	 //fmt.Fprint(w, "Fatal Error")
+	 http.ServeFile("./templates/form.html")
 }
 
 // I love lamp. This displays affection for r.URL.Path[1:]
@@ -79,7 +118,9 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-	 fmt.Fprint(w, "Contact Form is moving in right here")
+//	 fmt.Fprint(w, "<form id=\"contact-form\" action=\"http://127.0.0.1/DUMMY-RANDOM/send\" method=\"POST\"><input type=\"text\" name=\"name\" placeholder=\"name\" required/><br/><input type=\"text\" name=\"email\" placeholder=\"email\" required/><br/><input type=\"text\" name=\"subject\" placeholder=\"subject\"/><br/><input type=\"text\" name=\"message\" placeholder=\"message\" required/><br/><input id=\"contact-submit\" type=\"submit\" value=\"Say hello!" /></form>")
+//	 fmt.Fprint(w, "<form id=\"contact-form\" action=\"http://127.0.0.1/DUMMY-RANDOM/send\" method=\"POST\"><input type=\"text\" name=\"name\" placeholder=\"name\" required/><br/><input type=\"text\" name=\"email\" placeholder=\"email\" required/><br/><input type=\"text\" name=\"subject\" placeholder=\"subject\"/><br/><input type=\"text\" name=\"message\" placeholder=\"message\" required/><br/><input id=\"contact-submit\" type=\"submit\" value=\"Say hello!" /></form>")
+    fmt.Fprint(w, "Contact form here")
 	 log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 }
 
@@ -91,7 +132,7 @@ func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 
 // Uses mandrillapp.com default sender address.
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
-	destination := r.URL.Path[2:]
+	destination := casgoDestination
 	var query url.Values
 	if r.Method == "GET" {
 		query = r.URL.Query()

@@ -9,7 +9,7 @@ For historical purposes, GET is the default request method. If you wish to be RE
 Here is a sample form:
 
 ``` HTML
-<form id="contact-form" action="http://{your_server}/{your_api_key_that_you_makeup_yourself}/{your_email}" method="POST">
+<form id="contact-form" action="http://{your_server}/{your_api_key_that_you_makeup_yourself}/send" method="POST">
     <input type="text" name="name" placeholder="name" required/><br/>
     <input type="text" name="email" placeholder="email" required/><br/>
     <input type="text" name="subject" placeholder="subject"/><br/>
@@ -37,6 +37,7 @@ go get -v -u github.com/keighl/mandrill
 
 ```
 export MANDRILL_KEY=123456789
+export CASGO_DESTINATION=myemail@gmail.com
 nohup staticcontact &
 < press Ctrl+C >
 tail -f debug.log
