@@ -2,14 +2,14 @@
 
 ## The Form
 
-Simply change the action and method of a form to be `http://{your_server}/{your_email}`.
+Your API Endpoint is `http://{your_server}/{api-key}/send`
 
 For historical purposes, GET is the default request method. If you wish to be RESTful, POST request methods are also supported.
 
 Here is a sample form:
 
 ``` HTML
-<form id="contact-form" action="http://www.staticcontact.com/contact/{your_email}" method="POST">
+<form id="contact-form" action="http://{your_server}/{your_api_key_that_you_makeup_yourself}/{your_email}" method="POST">
     <input type="text" name="name" placeholder="name" required/><br/>
     <input type="text" name="email" placeholder="email" required/><br/>
     <input type="text" name="subject" placeholder="subject"/><br/>
@@ -22,10 +22,10 @@ Here is a sample form:
 
 This guide assumes a [Go environment](http://golang.org/doc/install) is already set up.
 
-### First, clone the repo
+### Install with ```go get```
 
 ```
-go get -v -u https://github.com/aerth/staticcontact
+go get -v -u git.earthbot.net/aerth/casgo
 ```
 
 ### If error, get the relevant dependencies
@@ -38,6 +38,8 @@ go get -v -u github.com/keighl/mandrill
 ```
 export MANDRILL_KEY=123456789
 nohup staticcontact &
+< press Ctrl+C >
+tail -f debug.log
 
 ```
 
@@ -57,3 +59,9 @@ $ git push heroku master
 ```
 
 Voila! Heroku should print out the URL of the corresponding application. Now, for a given contact form, point the action method to be `{heroku_url}/{your_email}`.
+
+### Historical Information
+
+* Casgo is short for "Contact API server in Golang"
+* Casgo is not to be confused with Costgo, the warehouse-style superstore.
+* It began as a fork of https://github.com/munrocape/staticcontact
