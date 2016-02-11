@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/csrf"
 	"log"
 	"net/http"
 	"net/url"
@@ -66,7 +67,7 @@ func main() {
 	r.HandleFunc("/" + casgoAPIKey + "/send", EmailHandler)
 	http.Handle("/", r)
 	//http.NotFound() NotFoundHandler()
-	log.Fatal(http.ListenAndServe(":"+*port, r))
+	log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("32-byte-long-auth-key"))(r)))
 	log.Println("Switching Logs to debug.log")
 	OpenLog()
 	log.Println("info: Listening on", *port)
@@ -128,7 +129,7 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-
+		//w.Header().Set("X-CSRF-Token", csrf.Token(r))
 		var key string
 		//var err string
 		key = getKey()
