@@ -1,3 +1,5 @@
+# Contact API Server in Golang
+
 ## The Form
 
 Simply change the action and method of a form to be `http://{your_server}/{your_email}`.
