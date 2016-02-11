@@ -5,7 +5,9 @@ import (
 //	"flag"
 	"fmt"
 //	"github.com/gorilla/mux"
-	"github.com/gorilla/csrf"
+
+// soon...
+//	"github.com/gorilla/csrf"
 	"log"
 	http "net/http"
 	"net/url"
@@ -35,16 +37,16 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-CSRF-Token", csrf.Token(r))
+		//w.Header().Set("X-CSRF-Token", csrf.Token(r))
 		var key string
 		//var err string
 		key = getKey()
-		t, err := template.New("Contact").ParseFiles("templates/form.html")
+		t, err := template.New("Contact").ParseFiles("./templates/form.html")
 		if err != nil {
 
 		t.ExecuteTemplate(w, "Contact", key,)
 		}else{
-			return
+			t.ExecuteTemplate(w, "Contact", key,)
 		}
 		// log.Println(t.ExecuteTemplate(w, "Contact", key,))
 
