@@ -1,10 +1,6 @@
-#[Static Contact](http://www.staticcontact.com)
+## The Form
 
-A form forwarder. Static Contact can replace the backend of a contact form so that you can put one on a static site and receive the email in your inbox.
-
-##How-to
-
-Simply change the action and method of a form to be `http://www.staticcontact.com/{your_email}`.
+Simply change the action and method of a form to be `http://{your_server}/{your_email}`.
 
 For historical purposes, GET is the default request method. If you wish to be RESTful, POST request methods are also supported.
 
@@ -20,20 +16,30 @@ Here is a sample form:
 </form>
 ```
 
-## Roll your own
+## Installation
 
 This guide assumes a [Go environment](http://golang.org/doc/install) is already set up.
 
 ###First, clone the repo
 
 ```
-$ git clone https://github.com/munrocape/staticcontact
+go get -v -u https://github.com/aerth/staticcontact
 ```
 
-###Next, get the relevant dependencies
+###If error, get the relevant dependencies
 ```
-$ go get github.com/keighl/mandrill
+go get -v -u github.com/keighl/mandrill
 ```
+
+## Usage
+
+```
+export MANDRILL_KEY=123456789
+nohup staticcontact &
+
+```
+
+## Heroku App
 
 ###Get accounts for services
 This requires an account to [Heroku](https://heroku.com), and an API key for [Mandrill](https://mandrillapp.com).

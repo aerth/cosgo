@@ -56,9 +56,9 @@ func sendEmail(destinationEmail string, form *Form) bool {
 	message.Subject = form.Subject
 	message.HTML = "<p>" + form.Message + "<p>"
 	message.Text = form.Message
-
-	responses, apiError, err := client.MessagesSend(message)
-
+	// responses, apiError, err := client.MessagesSend(message)
+	responses, err := client.MessagesSend(message)
+	apiError := responses
 	if err != nil {
 		return false
 	}
