@@ -1,34 +1,13 @@
 # Contact API Server in Golang
 
-## The Form
-
-Your API Endpoint is `http://{your_server}/{api-key}/send`
-
-For historical purposes, GET is the default request method. If you wish to be RESTful, POST request methods are also supported.
-
-Here is a sample form:
-
-``` HTML
-<form id="contact-form" action="http://{your_server}/{your_api_key_that_you_makeup_yourself}/send" method="POST">
-    <input type="text" name="name" placeholder="name" required/><br/>
-    <input type="text" name="email" placeholder="email" required/><br/>
-    <input type="text" name="subject" placeholder="subject"/><br/>
-    <input type="text" name="message" placeholder="message" required/><br/>
-    <input id="contact-submit" type="submit" value="Say hello!" />
-</form>
-```
-
 ## Installation
-
-This guide assumes a [Go environment](http://golang.org/doc/install) is already set up.
-
-### Install with ```go get```
 
 ```
 go get -v -u git.earthbot.net/aerth/casgo
 ```
 
-### If error, get the relevant dependencies
+If error, get the relevant dependencies
+
 ```
 go get -v -u github.com/keighl/mandrill
 ```
@@ -44,7 +23,26 @@ tail -f debug.log
 
 ```
 
-## Heroku App
+Repeat for each virtual host. nginx server block coming soon.
+
+
+# Future
+
+* Option to use different mail handler (not only mandrill)
+
+* .config File
+
+* templates/ folder
+
+
+
+
+# Other
+
+
+
+
+## Heroku App (not tested with Casgo yet)
 
 ###Get accounts for services
 This requires an account to [Heroku](https://heroku.com), and an API key for [Mandrill](https://mandrillapp.com).
