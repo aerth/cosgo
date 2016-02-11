@@ -2,26 +2,19 @@ package main
 
 
 import (
-//	"flag"
-	"fmt"
-//	"github.com/gorilla/mux"
 
+	"fmt"
 // soon...
 //	"github.com/gorilla/csrf"
 	"log"
 	http "net/http"
 	"net/url"
-//	"os"
 	"strings"
-//	"math/rand"
-//	"time"
 	"html/template"
-	//"io/ioutil"
-
-
 )
 
 
+// Routing URL handlers
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	 fmt.Fprint(w, "")

@@ -2,20 +2,13 @@ package main
 
 import (
 	"flag"
-//	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/csrf"
 	"log"
 	"net/http"
-//	"net/url"
 	"os"
-//	"strings"
 	"math/rand"
 	"time"
-//	"html/template"
-	//"io/ioutil"
-
-
 )
 
 var (
