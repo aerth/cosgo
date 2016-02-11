@@ -20,13 +20,13 @@ Here is a sample form:
 
 This guide assumes a [Go environment](http://golang.org/doc/install) is already set up.
 
-###First, clone the repo
+### First, clone the repo
 
 ```
 go get -v -u https://github.com/aerth/staticcontact
 ```
 
-###If error, get the relevant dependencies
+### If error, get the relevant dependencies
 ```
 go get -v -u github.com/keighl/mandrill
 ```
@@ -46,7 +46,7 @@ This requires an account to [Heroku](https://heroku.com), and an API key for [Ma
 
 Visit those sites and create accounts if you do not yet have them.
 
-###Configure environment variables
+### Configure environment variables
 `cd` into your local staticcontact directory. The linked buildpack is for revel applications.
 ```
 $ heroku create -b https://github.com/robfig/heroku-buildpack-go-revel.git
