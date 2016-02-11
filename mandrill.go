@@ -56,19 +56,15 @@ func sendEmail(destinationEmail string, form *Form) bool {
 	message.Subject = form.Subject
 	message.HTML = "<p>" + form.Message + "<p>"
 	message.Text = form.Message
-	// responses, apiError, err := client.MessagesSend(message)
 	responses, err := client.MessagesSend(message)
-	apiError := responses
-	if err != nil {
-		return false
-	}
-	if apiError != nil {
-		return false
-	}
-
+	log.Println(responses)
+	log.Println(err)
 	length := len(responses)
 	for i := 0; i < length; i++ {
-		if responses[i].Status == "rejected" {
+	//if responses[i].Status == "sent" {
+	//	return true
+	// } else if responses[i].Status == "rejected" {
+		 if responses[i].Status == "rejected" {
 			return false
 		} else if responses[i].Status == "invalid" {
 			return false

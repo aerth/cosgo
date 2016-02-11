@@ -11,6 +11,10 @@ import (
 	"strings"
 	"math/rand"
 	"time"
+	"html/template"
+	//"io/ioutil"
+
+
 )
 
 var (
@@ -25,7 +29,7 @@ func main() {
 	if os.Getenv("CASGO_API_KEY") == "" {
 		log.Println("Generating Random API Key...")
 		casgoAPIKey = GenerateAPIKey(20)
-		log.Println("CASGO_API_KEY:",casgoAPIKey)
+		log.Println("CASGO_API_KEY:",getKey())
 	}else{
 		casgoAPIKey = os.Getenv("CASGO_API_KEY")
 	}
@@ -42,14 +46,13 @@ func main() {
 
 	casgoDestination = os.Getenv("CASGO_DESTINATION")
 	if casgoDestination == "" {
-		log.Fatal("CASGO_DESTINATION is Crucial. Type: export CASGO_DESTINATION=your@email.com")
+		log.Fatal("CASGO_DESTINATION is Crucial. Type: export CASGO_DESTINATION=\"your@email.com\"")
 		os.Exit(1)
 	}
 
 	log.Printf("Starting Server on http://127.0.0.1:%s", *port)
-	log.Println("Switching Logs to debug.log")
-	OpenLog()
-	log.Println("Server on", *port)
+
+
 	r := mux.NewRouter()
 
 	r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
@@ -60,11 +63,13 @@ func main() {
 
 	r.HandleFunc("/{whatever}", LoveHandler)
 
-	r.HandleFunc("/DUMMY-RANDOM/{email}/", EmailHandler)
+	r.HandleFunc("/" + casgoAPIKey + "/send", EmailHandler)
 	http.Handle("/", r)
 	//http.NotFound() NotFoundHandler()
-	http.ListenAndServe(":"+*port, r)
-
+	log.Fatal(http.ListenAndServe(":"+*port, r))
+	log.Println("Switching Logs to debug.log")
+	OpenLog()
+	log.Println("info: Listening on", *port)
 }
 
 
@@ -87,6 +92,11 @@ return string(b)
 
 }
 
+func getKey() string {
+
+return casgoAPIKey
+
+}
 
 
 // This function opens a log file. "debug.log"
@@ -105,8 +115,8 @@ log.SetOutput(f)
 // This is the home page it is blank. "This server is broken"
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	 //fmt.Fprint(w, "Fatal Error")
-	 http.ServeFile("./templates/form.html")
+	 fmt.Fprint(w, "Fatal Error")
+	// http.ServeFile("./templates/form.html")
 }
 
 // I love lamp. This displays affection for r.URL.Path[1:]
@@ -118,9 +128,19 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-//	 fmt.Fprint(w, "<form id=\"contact-form\" action=\"http://127.0.0.1/DUMMY-RANDOM/send\" method=\"POST\"><input type=\"text\" name=\"name\" placeholder=\"name\" required/><br/><input type=\"text\" name=\"email\" placeholder=\"email\" required/><br/><input type=\"text\" name=\"subject\" placeholder=\"subject\"/><br/><input type=\"text\" name=\"message\" placeholder=\"message\" required/><br/><input id=\"contact-submit\" type=\"submit\" value=\"Say hello!" /></form>")
-//	 fmt.Fprint(w, "<form id=\"contact-form\" action=\"http://127.0.0.1/DUMMY-RANDOM/send\" method=\"POST\"><input type=\"text\" name=\"name\" placeholder=\"name\" required/><br/><input type=\"text\" name=\"email\" placeholder=\"email\" required/><br/><input type=\"text\" name=\"subject\" placeholder=\"subject\"/><br/><input type=\"text\" name=\"message\" placeholder=\"message\" required/><br/><input id=\"contact-submit\" type=\"submit\" value=\"Say hello!" /></form>")
-    fmt.Fprint(w, "Contact form here")
+
+		var key string
+		//var err string
+		key = getKey()
+		t, err := template.New("Contact").ParseFiles("templates/form.html")
+		log.Println(err)
+
+  //  t, _ := template.ParseFiles("templates/form.html")
+    // t.Execute(w, p)
+		log.Println(t.ExecuteTemplate(w, "Contact", key,))
+		//t.Execute(w, template.HTML(`<b>World</b>`))
+	//	err, response = http.FileServer(http.Dir("/usr/share/doc"))
+    //fmt.Fprint(w, "Contact form here")
 	 log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 }
 
@@ -157,6 +177,7 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 		fmt.Fprintln(rw, "0 Success! Your message has been delivered.")
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 	} else {
+		log.Printf("debug: %s at %s", form, destination)
 		fmt.Fprintln(rw, "1 Uh-oh! We were unable to deliver your message. Please confirm that you entered a valid email address.")
 		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 	}
@@ -169,8 +190,8 @@ func ParseQuery(query url.Values) *Form {
 		k = strings.ToLower(k)
 		if (k == "email") {
 			form.Email = v[0]
-		} else if (k == "name") {
-			form.Name = v[0]
+		//} else if (k == "name") {
+		//	form.Name = v[0]
 		} else if (k == "subject") {
 			form.Subject = v[0]
 		} else if (k == "message") {
