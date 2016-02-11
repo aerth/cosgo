@@ -56,6 +56,9 @@ func main() {
 	log.Printf("Starting Server on http://127.0.0.1:%s", *port)
 	r := mux.NewRouter()
 
+
+
+
 // Custom 404 redirect to /
 	r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
 
@@ -80,10 +83,9 @@ func main() {
 	log.Println("Switching Logs to debug.log")
 	OpenLog()
 	log.Println("info: Listening on", *port)
-	log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("32-byte-long-auth-key"))(r)))
+	log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
 
 }
-
 
 
 // Key Generator

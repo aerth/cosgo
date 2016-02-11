@@ -5,7 +5,7 @@ import (
 
 	"fmt"
 // soon...
-//	"github.com/gorilla/csrf"
+	"github.com/gorilla/csrf"
 	"log"
 	http "net/http"
 	"net/url"
@@ -31,15 +31,36 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		//w.Header().Set("X-CSRF-Token", csrf.Token(r))
-		var key string
+		//var key string
 		//var err string
-		key = getKey()
-		t, err := template.New("Contact").ParseFiles("./templates/form.html")
-		if err != nil {
+		//key = getKey()
 
-		t.ExecuteTemplate(w, "Contact", key,)
+
+		t, err := template.New("Contact").ParseFiles("./templates/form.html")
+	//	t = t.Funcs(template.FuncMap{"Key": key})
+	//	t = t.Funcs(template.FuncMap{csrf.TemplateTag: csrf.TemplateField(r)})
+		if err != nil {
+	//	p := Person{Key: key,
+	//        csrf.TemplateTag: csrf.TemplateField(r),
+	//			}
+
+	data := map[string]interface{}{
+	"Key": getKey(),
+	csrf.TemplateTag: csrf.TemplateField(r),
+		//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
+	 }
+
+	t.ExecuteTemplate(w, "Contact", data)
 		}else{
-			t.ExecuteTemplate(w, "Contact", key,)
+
+				data := map[string]interface{}{
+				"Key": getKey(),
+				csrf.TemplateTag: csrf.TemplateField(r),
+					//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
+				 }
+
+				t.ExecuteTemplate(w, "Contact", data)
+			// t.ExecuteTemplate(w, "Contact", key)
 		}
 		// log.Println(t.ExecuteTemplate(w, "Contact", key,))
 
@@ -63,7 +84,7 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		query = r.Form
 	} else {
-		fmt.Fprintln(rw, "Please submit via POST.")
+		//fmt.Fprintln(rw, "Please submit via POST.")
 	}
 	EmailSender(rw, r, destination, query)
 

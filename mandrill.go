@@ -43,9 +43,10 @@ func canSendEmail() bool {
 }
 
 func sendEmail(destinationEmail string, form *Form) bool {
-	if !canSendEmail() {
-		return false
-	}
+	//if !canSendEmail() {
+
+	//	return false
+	//}
 
 	client := mandrill.ClientWithKey(mandrillKey)
 
@@ -57,8 +58,8 @@ func sendEmail(destinationEmail string, form *Form) bool {
 	message.HTML = "<p>" + form.Message + "<p>"
 	message.Text = form.Message
 	responses, err := client.MessagesSend(message)
-	log.Println(responses)
-	log.Println(err)
+	//log.Println(responses)
+	if err != nil { log.Println(err) }
 	length := len(responses)
 	for i := 0; i < length; i++ {
 	//if responses[i].Status == "sent" {
@@ -68,6 +69,8 @@ func sendEmail(destinationEmail string, form *Form) bool {
 			return false
 		} else if responses[i].Status == "invalid" {
 			return false
+		} else if responses[i].Status == "must" {
+				return false
 		}
 	}
 	return true
