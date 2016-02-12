@@ -24,6 +24,30 @@ tail -f debug.log
 
 ```
 
+casgo looks for this template in ./templates/form.html
+
+```
+{{define "Contact"}}
+<!DOCTYPE html>
+<html>
+<body>
+<form id="contact-form" action="/{{.Key}}/send" method="POST">
+    <input type="text" name="email" placeholder="email" required/><br/>
+    <input type="text" name="subject" placeholder="subject"/><br/>
+    <input type="text" name="message" placeholder="message" required/><br/>
+    {{ .csrfField }}
+    <input id="contact-submit" type="submit" value="Say hello!" />
+</form>
+</body>
+</html>
+{{end}}
+
+
+
+
+```
+
+
 Sample Nginx Config
 
 ```nginx

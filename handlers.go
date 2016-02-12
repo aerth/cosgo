@@ -55,6 +55,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		//			}
 
 		data := map[string]interface{}{
+			"Logo":            casgologo,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
