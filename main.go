@@ -16,6 +16,7 @@ var (
 	mandrillKey      string
 	casgoDestination string
 	casgoAPIKey      string
+	//subdomain				 string
 )
 
 func main() {
@@ -37,6 +38,8 @@ func main() {
 	}
 	//
 	port := flag.String("port", "8080", "HTTP Port to listen on")
+	debug := flag.Bool("debug", false, "be verbose, dont switch to logfile")
+	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer")
 	flag.Parse()
 
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
@@ -52,7 +55,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Printf("Starting Server on http://127.0.0.1:%s", *port)
+	log.Printf("listening on http://127.0.0.1:%s", *port)
+
 	r := mux.NewRouter()
 
 	// Custom 404 redirect to /
@@ -73,12 +77,31 @@ func main() {
 	r.HandleFunc("/"+casgoAPIKey+"/send", EmailHandler)
 
 	http.Handle("/", r)
-
+	//subdomain = getSubdomain(r, r, r.Request)
 	// Switch to file log so we can ctrl+c and launch another instance :)
-	log.Println("Switching Logs to debug.log")
-	OpenLog()
+
+	if *debug == false {
+
+		log.Println("quiet mode: switching logs to casgo.log")
+
+		OpenLogFile()
+
+	}else{
+		log.Println("debug on: not using casgo.log")
+	}
+
 	log.Println("info: Listening on", *port)
-	log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
+
+
+	if *insecure == true {
+		log.Println("secure [off]")
+		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
+	}else{
+		// Change this CSRF auth token in production!
+		log.Println("secure [on]")
+	  log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
+	}
+
 
 }
 
@@ -103,8 +126,8 @@ func getKey() string {
 }
 
 // This function opens a log file. "debug.log"
-func OpenLog() {
-	f, err := os.OpenFile("./debug.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
+func OpenLogFile() {
+	f, err := os.OpenFile("./casgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
 	if err != nil {
 		log.Fatal("error opening file: %v", err)
 		os.Exit(1)
