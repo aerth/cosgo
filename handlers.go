@@ -1,70 +1,66 @@
 package main
 
-
 import (
-
 	"fmt"
-// soon...
+	// soon...
 	"github.com/gorilla/csrf"
+	"html/template"
 	"log"
 	http "net/http"
 	"net/url"
 	"strings"
-	"html/template"
 )
-
 
 // Routing URL handlers
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	 fmt.Fprint(w, "")
+	fmt.Fprint(w, "")
 	// http.ServeFile("./templates/form.html")
 }
 
 // I love lamp. This displays affection for r.URL.Path[1:]
 
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
-	 fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
-	 log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
+	fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
+	log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
 }
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-		//w.Header().Set("X-CSRF-Token", csrf.Token(r))
-		//var key string
-		//var err string
-		//key = getKey()
+	//w.Header().Set("X-CSRF-Token", csrf.Token(r))
+	//var key string
+	//var err string
+	//key = getKey()
 
-
-		t, err := template.New("Contact").ParseFiles("./templates/form.html")
+	t, err := template.New("Contact").ParseFiles("./templates/form.html")
 	//	t = t.Funcs(template.FuncMap{"Key": key})
 	//	t = t.Funcs(template.FuncMap{csrf.TemplateTag: csrf.TemplateField(r)})
-		if err != nil {
-	//	p := Person{Key: key,
-	//        csrf.TemplateTag: csrf.TemplateField(r),
-	//			}
+	if err != nil {
+		//	p := Person{Key: key,
+		//        csrf.TemplateTag: csrf.TemplateField(r),
+		//			}
 
-	data := map[string]interface{}{
-	"Key": getKey(),
-	csrf.TemplateTag: csrf.TemplateField(r),
-		//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
-	 }
-
-	t.ExecuteTemplate(w, "Contact", data)
-		}else{
-
-				data := map[string]interface{}{
-				"Key": getKey(),
-				csrf.TemplateTag: csrf.TemplateField(r),
-					//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
-				 }
-
-				t.ExecuteTemplate(w, "Contact", data)
-			// t.ExecuteTemplate(w, "Contact", key)
+		data := map[string]interface{}{
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
 		}
-		// log.Println(t.ExecuteTemplate(w, "Contact", key,))
 
-	 log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		t.ExecuteTemplate(w, "Contact", data)
+	} else {
+
+		data := map[string]interface{}{
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
+		}
+
+		t.ExecuteTemplate(w, "Contact", data)
+		// t.ExecuteTemplate(w, "Contact", key)
+	}
+	// log.Println(t.ExecuteTemplate(w, "Contact", key,))
+
+	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 }
 
 // Redirect everything /
@@ -72,14 +68,13 @@ func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, "/", 301)
 }
 
-
 // Uses environmental variable on launch to determine Destination
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	destination := casgoDestination
 	var query url.Values
-//	if r.Method == "GET" {
-//		query = r.URL.Query()
-//	} else if r.Method == "POST" {
+	//	if r.Method == "GET" {
+	//		query = r.URL.Query()
+	//	} else if r.Method == "POST" {
 	if r.Method == "POST" {
 		r.ParseForm()
 		query = r.Form
@@ -89,7 +84,6 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	EmailSender(rw, r, destination, query)
 
 }
-
 
 // Will introduce success/fail in the templates soon!
 func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
@@ -113,13 +107,13 @@ func ParseQuery(query url.Values) *Form {
 	additionalFields := ""
 	for k, v := range query {
 		k = strings.ToLower(k)
-		if (k == "email") {
+		if k == "email" {
 			form.Email = v[0]
-		//} else if (k == "name") {
-		//	form.Name = v[0]
-		} else if (k == "subject") {
+			//} else if (k == "name") {
+			//	form.Name = v[0]
+		} else if k == "subject" {
 			form.Subject = v[0]
-		} else if (k == "message") {
+		} else if k == "message" {
 			form.Message = k + ": " + v[0] + "<br>\n"
 		} else {
 			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
@@ -136,4 +130,13 @@ func ParseQuery(query url.Values) *Form {
 		}
 	}
 	return form
+}
+
+var subdomain string
+
+func getSubdomain(rw http.ResponseWriter, r *http.Request, query url.Values) string {
+	prefix := strings.Split(r.Host, ".")
+
+	return prefix[0]
+
 }

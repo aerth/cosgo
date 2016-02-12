@@ -4,10 +4,10 @@ import (
 	"bytes"
 	mandrill "github.com/keighl/mandrill"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"log"
 )
 
 type Form struct {
@@ -59,18 +59,20 @@ func sendEmail(destinationEmail string, form *Form) bool {
 	message.Text = form.Message
 	responses, err := client.MessagesSend(message)
 	//log.Println(responses)
-	if err != nil { log.Println(err) }
+	if err != nil {
+		log.Println(err)
+	}
 	length := len(responses)
 	for i := 0; i < length; i++ {
-	//if responses[i].Status == "sent" {
-	//	return true
-	// } else if responses[i].Status == "rejected" {
-		 if responses[i].Status == "rejected" {
+		//if responses[i].Status == "sent" {
+		//	return true
+		// } else if responses[i].Status == "rejected" {
+		if responses[i].Status == "rejected" {
 			return false
 		} else if responses[i].Status == "invalid" {
 			return false
 		} else if responses[i].Status == "must" {
-				return false
+			return false
 		}
 	}
 	return true
