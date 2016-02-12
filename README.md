@@ -15,7 +15,7 @@ go get -v -u github.com/keighl/mandrill
 
 ## Usage
 
-```
+```shell
 export MANDRILL_KEY=123456789
 export CASGO_DESTINATION=myemail@gmail.com
 nohup staticcontact &
@@ -23,6 +23,27 @@ nohup staticcontact &
 tail -f debug.log
 
 ```
+
+Sample Nginx Config
+
+```nginx
+server {
+        server_name default_address;
+        listen 80;
+
+        location / {
+
+        proxy_pass http://127.0.0.1:6098; # Change to your static site's port
+
+        }
+        location /contact/form/send {
+        proxy_pass http://127.0.0.1:6099; # Change using "casgo -port XXX"
+        }
+}
+
+```
+
+
 
 Repeat for each virtual host. nginx server block coming soon.
 
@@ -65,3 +86,4 @@ Voila! Heroku should print out the URL of the corresponding application. Now, fo
 * Casgo is short for "Contact API server in Golang"
 * Casgo is not to be confused with Costgo, the warehouse-style superstore.
 * It began as a fork of https://github.com/munrocape/staticcontact
+
