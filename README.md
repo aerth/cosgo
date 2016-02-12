@@ -3,7 +3,8 @@
 ## Installation
 
 ```
-go get -v -u git.earthbot.net/aerth/casgo
+go get -v -u github.com/aerth/casgo
+
 ```
 
 If error, get the relevant dependencies
