@@ -105,7 +105,7 @@ $ git push heroku master
 
 Voila! Heroku should print out the URL of the corresponding application. Now, for a given contact form, point the action method to be `{heroku_url}/{your_email}`.
 
-### Historical Information
+## Historical Information
 
 * Casgo is short for "Contact API server in Golang"
 * Casgo is not to be confused with Costgo, the warehouse-style superstore.
