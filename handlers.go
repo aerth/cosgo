@@ -26,8 +26,7 @@ var poscenter string = `">
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Fprint(w, "<!DOCTYPE html><html>" + precenter + casgologo + poscenter + "</html>")
-
+	fmt.Fprint(w, "<!DOCTYPE html><html>"+precenter+casgologo+poscenter+"</html>")
 
 	// http.ServeFile("./templates/form.html")
 }
@@ -55,7 +54,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		//			}
 
 		data := map[string]interface{}{
-			"Logo":            casgologo,
+			"Logo":           casgologo,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
@@ -65,7 +64,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		data := map[string]interface{}{
-			"Logo":            casgologo,
+			"Logo":           casgologo,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
