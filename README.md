@@ -28,6 +28,30 @@ nohup casgo -fastcgi -insecure -port 6060 &
 tail -f debug.log
 
 ```
+or while testing
+
+```
+MANDRILL_KEY=134 CASGO_DESTINATION=1345 CASGO_API_KEY=contact casgo -debug -insecure
+
+```
+
+
+```
+Usage of casgo:
+  -bind string
+    	default: 127.0.0.1 (default "127.0.0.1")
+  -debug
+    	be verbose, dont switch to logfile
+  -fastcgi
+    	use fastcgi
+  -insecure
+    	accept insecure cookie transfer
+  -mailbox
+    	save messages to an local mbox file
+  -port string
+    	HTTP Port to listen on (default "8080")
+
+```
 
 
 
@@ -96,4 +120,3 @@ Repeat for each virtual host. nginx server block coming soon.
 * Casgo is short for "Contact API server in Golang"
 * Casgo is not to be confused with Costco, the warehouse-style superstore.
 * It began as a fork of https://github.com/munrocape/staticcontact
-

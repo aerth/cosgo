@@ -7,12 +7,13 @@ import (
 	"github.com/gorilla/csrf"
 	"html/template"
 	"log"
+	"net"
 	http "net/http"
 	"net/url"
 	"strings"
 )
 
-var formTemplate = template.Must(template.New("example").Parse(formTemplateSrc))
+//var formTemplate = template.Must(template.New("example").Parse(formTemplateSrc))
 
 var precenter string = `<!-- casgo is free software -->
 <div style="margin-top: 10% margin-bottom: 10%; width: 100%; max-width: 100%; text-align: center;">
@@ -38,11 +39,8 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
 	subdomain := getSubdomain(r)
-	log.Printf("Debug: domain is %s!", subdomain)
-	if subdomain == "127" {
-		fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
-		log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
-	} else if subdomain == "" {
+
+	if subdomain == "" {
 		fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
 		log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
 	} else {
@@ -89,28 +87,10 @@ func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, "/", 301)
 }
 
-func CaptchaHandler(w http.ResponseWriter, r *http.Request) {
-	//if r.URL.Path != "/captcha2/" {
-	//	http.NotFound(w, r)
-	//	return
-	//}
-	d := struct {
-		CaptchaId string
-	}{
-		captcha.New(),
-	}
-	if err := formTemplate.Execute(w, &d); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 // Uses environmental variable on launch to determine Destination
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	destination := casgoDestination
 	var query url.Values
-	//	if r.Method == "GET" {
-	//		query = r.URL.Query()
-	//	} else if r.Method == "POST" {
 	if r.Method == "POST" {
 		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
 			fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
@@ -119,7 +99,6 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 			query = r.Form
 			EmailSender(rw, r, destination, query)
-			//	io.WriteString(w, "Great job, human! You solved the captcha.\n")
 		}
 	} else {
 
@@ -129,7 +108,7 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-// Will introduce success/fail in the templates soon!
+// Will introduce success/fail in the templates soon!!
 func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
 	form := ParseQuery(query)
 	if form.Email == "" {
@@ -178,75 +157,17 @@ func ParseQuery(query url.Values) *Form {
 
 func getSubdomain(r *http.Request) string {
 	type Subdomains map[string]http.Handler
-	//log.Println("debug URL:"+ r.URL.RequestURI())
-	//log.Println("debug URL:"+
-	log.Println(r.Host)
 	hostparts := strings.Split(r.Host, ":")
 	requesthost := hostparts[0]
-	log.Println(requesthost)
-
-	domainParts := strings.Split(requesthost, ".")
-	//log.Println("domain parts:"+len(domainParts))
-	//log.Printf("debug: %s and %s", string(r.Host), domainParts[0] + domainParts[1] + domainParts[2])
-	log.Println(domainParts[0])
-	if len(domainParts) > 2 {
-		if domainParts[0] != "127" {
-			return domainParts[0]
-		} else {
-			return ""
+	if net.ParseIP(requesthost) == nil {
+		log.Println("Requested domain: " + requesthost)
+		domainParts := strings.Split(requesthost, ".")
+		log.Println("Subdomain:" + domainParts[0])
+		if len(domainParts) > 2 {
+			if domainParts[0] != "127" {
+				return domainParts[0]
+			}
 		}
 	}
 	return ""
 }
-
-const formTemplateSrc = `<!doctype html>
-<head><title>Robots Only</title></head>
-<body>
-<script>
-function setSrcQuery(e, q) {
-	var src  = e.src;
-	var p = src.indexOf('?');
-	if (p >= 0) {
-		src = src.substr(0, p);
-	}
-	e.src = src + "?" + q
-}
-function playAudio() {
-	var le = document.getElementById("lang");
-	var lang = le.options[le.selectedIndex].value;
-	var e = document.getElementById('audio')
-	setSrcQuery(e, "lang=" + lang)
-	e.style.display = 'block';
-	e.autoplay = 'true';
-	return false;
-}
-function changeLang() {
-	var e = document.getElementById('audio')
-	if (e.style.display == 'block') {
-		playAudio();
-	}
-}
-function reload() {
-	setSrcQuery(document.getElementById('image'), "reload=" + (new Date()).getTime());
-	setSrcQuery(document.getElementById('audio'), (new Date()).getTime());
-	return false;
-}
-</script>
-<select id="lang" onchange="changeLang()">
-	<option value="en">English</option>
-	<option value="ru">Russian</option>
-	<option value="zh">Chinese</option>
-</select>
-<form action="/process" method=post>
-<p>Type the numbers you see in the picture below:</p>
-<p><img id=image src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
-<a href="#" onclick="reload()">Reload</a> | <a href="#" onclick="playAudio()">Play Audio</a>
-<audio id=audio controls style="display:none" src="/captcha/{{.CaptchaId}}.wav" preload=none>
-  Your browser dont support audio.
-  <a href="/captcha/download/{{.CaptchaId}}.wav">Download file</a> to play it in the external player.
-</audio>
-<input type=hidden name=captchaId value="{{.CaptchaId}}"><br>
-<input name=captchaSolution>
-<input type=submit value=Submit>
-</form>
-`
