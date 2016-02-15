@@ -6,11 +6,11 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"math/rand"
-	"net/http"
 	"net"
+	"net/http"
+	"net/http/fcgi"
 	"os"
 	"time"
-	"net/http/fcgi"
 )
 
 var (
@@ -82,7 +82,6 @@ func main() {
 
 	http.Handle("/", r)
 
-
 	// Switch to file log so we can ctrl+c and launch another instance :)
 
 	if *mailbox == true {
@@ -97,7 +96,6 @@ func main() {
 		log.Println("debug on: [not using casgo.log]")
 	}
 
-
 	if *fastcgi == true {
 		log.Println("fastcgi [on]")
 		log.Println("secure [off]")
@@ -109,11 +107,11 @@ func main() {
 		fcgi.Serve(listener, nil)
 		//log.Fatal(fcgi.Serve( listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
 
-	}else	if *insecure == true {
+	} else if *insecure == true {
 		log.Println("info: Listening on", *port)
 		log.Println("secure [off]")
 		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
-	}else {
+	} else {
 		log.Println("info: Listening on", *port)
 		// Change this CSRF auth token in production!
 		log.Println("secure [on]")

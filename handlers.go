@@ -35,18 +35,17 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
 	subdomain := getSubdomain(r)
-log.Printf("Debug: domain is %s!", subdomain)
-if subdomain == "127" {
-	fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
+	log.Printf("Debug: domain is %s!", subdomain)
+	if subdomain == "127" {
+		fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
 		log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
-}else if subdomain == ""{
-	fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
+	} else if subdomain == "" {
+		fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
 		log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
-	}else{
+	} else {
 		fmt.Fprintf(w, "%s loves %s!", subdomain, r.URL.Path[1:])
-			log.Printf("I love %s says %s at %s", subdomain, r.UserAgent(), r.RemoteAddr)
-}
-
+		log.Printf("I love %s says %s at %s", subdomain, r.UserAgent(), r.RemoteAddr)
+	}
 
 }
 
@@ -159,7 +158,6 @@ func ParseQuery(query url.Values) *Form {
 	return form
 }
 
-
 func getSubdomain(r *http.Request) string {
 	type Subdomains map[string]http.Handler
 	//log.Println("debug URL:"+ r.URL.RequestURI())
@@ -169,16 +167,16 @@ func getSubdomain(r *http.Request) string {
 	requesthost := hostparts[0]
 	log.Println(requesthost)
 
-		domainParts := strings.Split(requesthost, ".")
+	domainParts := strings.Split(requesthost, ".")
 	//log.Println("domain parts:"+len(domainParts))
 	//log.Printf("debug: %s and %s", string(r.Host), domainParts[0] + domainParts[1] + domainParts[2])
 	log.Println(domainParts[0])
 	if len(domainParts) > 2 {
 		if domainParts[0] != "127" {
-		return domainParts[0]
-	}else{
-	return ""
+			return domainParts[0]
+		} else {
+			return ""
+		}
 	}
-}
-return ""
+	return ""
 }
