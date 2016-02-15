@@ -22,24 +22,23 @@ var (
 )
 
 type C struct {
-CaptchaId string
+	CaptchaId string
 }
 
-
 const (
-    // Default number of digits in captcha solution.
-    DefaultLen = 6
-    // The number of captchas created that triggers garbage collection used
-    // by default store.
-    CollectNum = 100
-    // Expiration time of captchas used by default store.
-    Expiration = 10 * time.Minute
+	// Default number of digits in captcha solution.
+	DefaultLen = 6
+	// The number of captchas created that triggers garbage collection used
+	// by default store.
+	CollectNum = 100
+	// Expiration time of captchas used by default store.
+	Expiration = 10 * time.Minute
 )
 
 const (
-    // Standard width and height of a captcha image.
-    StdWidth  = 240
-    StdHeight = 80
+	// Standard width and height of a captcha image.
+	StdWidth  = 240
+	StdHeight = 80
 )
 
 func main() {
@@ -130,7 +129,7 @@ func main() {
 			log.Fatal("Could not bind: ", err)
 		}
 		log.Println("info: Listening on", *port)
-	//	fcgi.Serve(listener, nil) // this works but without csrf..!
+		//	fcgi.Serve(listener, nil) // this works but without csrf..!
 		fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r))
 		//log.Fatal(fcgi.Serve( listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
 

@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	// soon...
+	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
 	"html/template"
 	"log"
 	http "net/http"
 	"net/url"
 	"strings"
-		"github.com/dchest/captcha"
 )
 
 var formTemplate = template.Must(template.New("example").Parse(formTemplateSrc))
@@ -72,7 +72,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 			"Logo":           casgologo,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
-			"CaptchaId":			captcha.New(),
+			"CaptchaId":      captcha.New(),
 			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
 		}
 
@@ -113,20 +113,19 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	//	} else if r.Method == "POST" {
 	if r.Method == "POST" {
 		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
-				fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
-					http.Redirect(rw, r, "/", 301)
-				} else {
-					r.ParseForm()
-					query = r.Form
-					EmailSender(rw, r, destination, query)
-					//	io.WriteString(w, "Great job, human! You solved the captcha.\n")
-			}
+			fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
+			http.Redirect(rw, r, "/", 301)
+		} else {
+			r.ParseForm()
+			query = r.Form
+			EmailSender(rw, r, destination, query)
+			//	io.WriteString(w, "Great job, human! You solved the captcha.\n")
+		}
 	} else {
 
 		http.Redirect(rw, r, "/", 301)
 		//fmt.Fprintln(rw, "Please submit via POST.")
 	}
-
 
 }
 
@@ -199,8 +198,6 @@ func getSubdomain(r *http.Request) string {
 	}
 	return ""
 }
-
-
 
 const formTemplateSrc = `<!doctype html>
 <head><title>Robots Only</title></head>
