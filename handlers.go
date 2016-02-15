@@ -160,7 +160,7 @@ func getSubdomain(r *http.Request) string {
 	domainParts := strings.Split(r.Host, ".")
 	log.Println(len(domainParts))
 	//log.Printf("debug: %s and %s", string(r.Host), domainParts[0] + domainParts[1] + domainParts[2])
-	if len(domainParts) == 3 {
+	if len(domainParts) > 3 {
 		return domainParts[0]
 	}else{
 	return ""
