@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"log"
@@ -18,6 +19,27 @@ var (
 	mandrillKey      string
 	casgoDestination string
 	casgoAPIKey      string
+)
+
+type C struct {
+CaptchaId string
+}
+
+
+const (
+    // Default number of digits in captcha solution.
+    DefaultLen = 6
+    // The number of captchas created that triggers garbage collection used
+    // by default store.
+    CollectNum = 100
+    // Expiration time of captchas used by default store.
+    Expiration = 10 * time.Minute
+)
+
+const (
+    // Standard width and height of a captcha image.
+    StdWidth  = 240
+    StdHeight = 80
 )
 
 func main() {
@@ -76,11 +98,15 @@ func main() {
 
 	// Magic URL Generator for API endpoint
 	r.HandleFunc("/"+casgoAPIKey+"/send", EmailHandler)
+	//r.Methods("GET").PathPrefix("/captcha2").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 
 	// Fun for 404s
 	r.HandleFunc("/{whatever}", LoveHandler)
+	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 
+	//http.Handle("/captcha/", captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	http.Handle("/", r)
+	//r.HandleFunc("/captcha/",captcha.Server(captcha.StdWidth, captcha.StdHeight))
 
 	// Switch to file log so we can ctrl+c and launch another instance :)
 
@@ -104,7 +130,8 @@ func main() {
 			log.Fatal("Could not bind: ", err)
 		}
 		log.Println("info: Listening on", *port)
-		fcgi.Serve(listener, nil)
+	//	fcgi.Serve(listener, nil) // this works but without csrf..!
+		fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r))
 		//log.Fatal(fcgi.Serve( listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
 
 	} else if *insecure == true {

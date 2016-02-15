@@ -9,7 +9,10 @@ import (
 	http "net/http"
 	"net/url"
 	"strings"
+		"github.com/dchest/captcha"
 )
+
+var formTemplate = template.Must(template.New("example").Parse(formTemplateSrc))
 
 var precenter string = `<!-- casgo is free software -->
 <div style="margin-top: 10% margin-bottom: 10%; width: 100%; max-width: 100%; text-align: center;">
@@ -51,24 +54,15 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set("X-CSRF-Token", csrf.Token(r))
-	//var key string
-	//var err string
-	//key = getKey()
 
 	t, err := template.New("Contact").ParseFiles("./templates/form.html")
-	//	t = t.Funcs(template.FuncMap{"Key": key})
-	//	t = t.Funcs(template.FuncMap{csrf.TemplateTag: csrf.TemplateField(r)})
 	if err != nil {
-		//	p := Person{Key: key,
-		//        csrf.TemplateTag: csrf.TemplateField(r),
-		//			}
 
 		data := map[string]interface{}{
 			"Logo":           casgologo,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
-			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
+			//		"Captcha":
 		}
 
 		t.ExecuteTemplate(w, "Contact", data)
@@ -78,6 +72,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 			"Logo":           casgologo,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
+			"CaptchaId":			captcha.New(),
 			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
 		}
 
@@ -94,6 +89,21 @@ func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, "/", 301)
 }
 
+func CaptchaHandler(w http.ResponseWriter, r *http.Request) {
+	//if r.URL.Path != "/captcha2/" {
+	//	http.NotFound(w, r)
+	//	return
+	//}
+	d := struct {
+		CaptchaId string
+	}{
+		captcha.New(),
+	}
+	if err := formTemplate.Execute(w, &d); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // Uses environmental variable on launch to determine Destination
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	destination := casgoDestination
@@ -102,12 +112,21 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	//		query = r.URL.Query()
 	//	} else if r.Method == "POST" {
 	if r.Method == "POST" {
-		r.ParseForm()
-		query = r.Form
+		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
+				fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
+					http.Redirect(rw, r, "/", 301)
+				} else {
+					r.ParseForm()
+					query = r.Form
+					EmailSender(rw, r, destination, query)
+					//	io.WriteString(w, "Great job, human! You solved the captcha.\n")
+			}
 	} else {
+
+		http.Redirect(rw, r, "/", 301)
 		//fmt.Fprintln(rw, "Please submit via POST.")
 	}
-	EmailSender(rw, r, destination, query)
+
 
 }
 
@@ -180,3 +199,57 @@ func getSubdomain(r *http.Request) string {
 	}
 	return ""
 }
+
+
+
+const formTemplateSrc = `<!doctype html>
+<head><title>Robots Only</title></head>
+<body>
+<script>
+function setSrcQuery(e, q) {
+	var src  = e.src;
+	var p = src.indexOf('?');
+	if (p >= 0) {
+		src = src.substr(0, p);
+	}
+	e.src = src + "?" + q
+}
+function playAudio() {
+	var le = document.getElementById("lang");
+	var lang = le.options[le.selectedIndex].value;
+	var e = document.getElementById('audio')
+	setSrcQuery(e, "lang=" + lang)
+	e.style.display = 'block';
+	e.autoplay = 'true';
+	return false;
+}
+function changeLang() {
+	var e = document.getElementById('audio')
+	if (e.style.display == 'block') {
+		playAudio();
+	}
+}
+function reload() {
+	setSrcQuery(document.getElementById('image'), "reload=" + (new Date()).getTime());
+	setSrcQuery(document.getElementById('audio'), (new Date()).getTime());
+	return false;
+}
+</script>
+<select id="lang" onchange="changeLang()">
+	<option value="en">English</option>
+	<option value="ru">Russian</option>
+	<option value="zh">Chinese</option>
+</select>
+<form action="/process" method=post>
+<p>Type the numbers you see in the picture below:</p>
+<p><img id=image src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
+<a href="#" onclick="reload()">Reload</a> | <a href="#" onclick="playAudio()">Play Audio</a>
+<audio id=audio controls style="display:none" src="/captcha/{{.CaptchaId}}.wav" preload=none>
+  Your browser dont support audio.
+  <a href="/captcha/download/{{.CaptchaId}}.wav">Download file</a> to play it in the external player.
+</audio>
+<input type=hidden name=captchaId value="{{.CaptchaId}}"><br>
+<input name=captchaSolution>
+<input type=submit value=Submit>
+</form>
+`
