@@ -6,7 +6,9 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/http/fcgi"
 	"os"
 	"time"
 )
@@ -16,7 +18,6 @@ var (
 	mandrillKey      string
 	casgoDestination string
 	casgoAPIKey      string
-//	subdomain				 string
 )
 
 func main() {
@@ -41,6 +42,8 @@ func main() {
 	debug := flag.Bool("debug", false, "be verbose, dont switch to logfile")
 	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer")
 	mailbox := flag.Bool("mailbox", false, "save messages to an local mbox file")
+	fastcgi := flag.Bool("fastcgi", false, "use fastcgi")
+	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1")
 	flag.Parse()
 
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
@@ -79,7 +82,6 @@ func main() {
 
 	http.Handle("/", r)
 
-
 	// Switch to file log so we can ctrl+c and launch another instance :)
 
 	if *mailbox == true {
@@ -94,12 +96,23 @@ func main() {
 		log.Println("debug on: [not using casgo.log]")
 	}
 
-	log.Println("info: Listening on", *port)
+	if *fastcgi == true {
+		log.Println("fastcgi [on]")
+		log.Println("secure [off]")
+		listener, err := net.Listen("tcp", *bind+":"+*port)
+		if err != nil {
+			log.Fatal("Could not bind: ", err)
+		}
+		log.Println("info: Listening on", *port)
+		fcgi.Serve(listener, nil)
+		//log.Fatal(fcgi.Serve( listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
 
-	if *insecure == true {
+	} else if *insecure == true {
+		log.Println("info: Listening on", *port)
 		log.Println("secure [off]")
 		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
 	} else {
+		log.Println("info: Listening on", *port)
 		// Change this CSRF auth token in production!
 		log.Println("secure [on]")
 		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
