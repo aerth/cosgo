@@ -1,5 +1,7 @@
 # Contact API Server in Golang
 
+Copyright (c) 2016 aerth
+
 ## Installation / Updating
 
 ```
@@ -85,6 +87,7 @@ Repeat for each virtual host. nginx server block coming soon.
 
 * templates/ folder
 
+* Pull requests from strangers are cool!
 
 
 
