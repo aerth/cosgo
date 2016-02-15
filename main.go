@@ -16,7 +16,7 @@ var (
 	mandrillKey      string
 	casgoDestination string
 	casgoAPIKey      string
-	//subdomain				 string
+//	subdomain				 string
 )
 
 func main() {
@@ -66,31 +66,30 @@ func main() {
 	// Should be called BlankPageHandler
 	r.HandleFunc("/", HomeHandler)
 
-	// This is for behind a reverse proxy.
+	// This is the meat, for behind a reverse proxy.
 	r.HandleFunc("/"+casgoAPIKey+"/form", ContactHandler)
 	r.HandleFunc("/"+casgoAPIKey+"/form/", ContactHandler)
 	//	r.HandleFunc("/contact/", ContactHandler)
 
-	// Fun
-	r.HandleFunc("/{whatever}", LoveHandler)
-
-	// Magic URL Generator
+	// Magic URL Generator for API endpoint
 	r.HandleFunc("/"+casgoAPIKey+"/send", EmailHandler)
 
+	// Fun for 404s
+	r.HandleFunc("/{whatever}", LoveHandler)
+
 	http.Handle("/", r)
-	//subdomain = getSubdomain(r, r, r.Request)
+
+
 	// Switch to file log so we can ctrl+c and launch another instance :)
+
 	if *mailbox == true {
 		log.Println("mailbox mode: [sending mail to casgo.mbox]")
 		//CreateMailBox()
 	}
 
 	if *debug == false {
-
 		log.Println("quiet mode: [switching logs to casgo.log]")
-
 		OpenLogFile()
-
 	} else {
 		log.Println("debug on: [not using casgo.log]")
 	}

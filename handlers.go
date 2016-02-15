@@ -34,8 +34,15 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 // I love lamp. This displays affection for r.URL.Path[1:]
 
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
+if getSubdomain(r) == "" {
 	fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
-	log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
+		log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
+}else{
+		fmt.Fprintf(w, "%s loves %s!", getSubdomain(r), r.URL.Path[1:])
+			log.Printf("I love %s says %s at %s", getSubdomain(r), r.UserAgent(), r.RemoteAddr)
+}
+
+
 }
 
 // Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
@@ -147,11 +154,15 @@ func ParseQuery(query url.Values) *Form {
 	return form
 }
 
-var subdomain string
 
-func getSubdomain(rw http.ResponseWriter, r *http.Request, query url.Values) string {
-	prefix := strings.Split(r.Host, ".")
-
-	return prefix[0]
-
+func getSubdomain(r *http.Request) string {
+	type Subdomains map[string]http.Handler
+	domainParts := strings.Split(r.Host, ".")
+	log.Println(len(domainParts))
+	//log.Printf("debug: %s and %s", string(r.Host), domainParts[0] + domainParts[1] + domainParts[2])
+	if len(domainParts) == 3 {
+		return domainParts[0]
+	}else{
+	return ""
+	}
 }
