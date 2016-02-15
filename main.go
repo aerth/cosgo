@@ -42,7 +42,7 @@ func main() {
 	debug := flag.Bool("debug", false, "be verbose, dont switch to logfile")
 	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer")
 	mailbox := flag.Bool("mailbox", false, "save messages to an local mbox file")
-	fastcgi := flag.Bool("fastcgi", true, "use fastcgi")
+	fastcgi := flag.Bool("fastcgi", false, "use fastcgi")
 	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1")
 	flag.Parse()
 
