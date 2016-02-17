@@ -34,7 +34,7 @@ or while testing
 MANDRILL_KEY=134 CASGO_DESTINATION=1345 CASGO_API_KEY=contact casgo -debug -insecure
 
 ```
-
+########
 
 ```
 Usage of casgo:
@@ -53,33 +53,30 @@ Usage of casgo:
 
 ```
 
+###################
 
+### Be sure to copy the templates/ folder to whereever your binary will exit.
 
-casgo looks for this template in ./templates/form.html
+## Sample Cron
+
+This right here, it changes the form action= to whatever the key is. Every 1 minute. 5 minutes may be better, in case a visitor just stays on the page for a minute or two before sending the message.
 
 ```
-{{define "Contact"}}
-<!DOCTYPE html>
-<html>
-<body>
-<form id="contact-form" action="/{{.Key}}/send" method="POST">
-    <input type="text" name="email" placeholder="email" required/><br/>
-    <input type="text" name="subject" placeholder="subject"/><br/>
-    <input type="text" name="message" placeholder="message" required/><br/>
-    {{ .csrfField }}
-    <input id="contact-submit" type="submit" value="Say hello!" />
-</form>
-</body>
-</html>
-{{end}}
+MANDRILL_KEY=yourK3YgoesH3R3
+CASGO_DESTINATION=your@email.com
+#CASGO_API_KEY=contact
 
+* * * * * /usr/bin/pkill casgo;/demon/casgo/casgo -insecure -fastcgi -port 6099 > /dev/null 2>&1
 
+20 4 * * * /usr/bin/pkill casgo;/demon/casgo/casgo -insecure -fastcgi -port 6099 > /dev/null 2>&1
 
+@reboot /demon/casgo/casgo -insecure -fastcgi -port 6099 > /dev/null 2>&1
 
 ```
 
 
-Sample Nginx Config
+
+## Sample Nginx Config
 
 ```nginx
 server {
@@ -107,12 +104,11 @@ Repeat for each virtual host. nginx server block coming soon.
 
 * Option to use different mail handler (not only mandrill)
 
-* .config File
+* remove flags and use env variables!
 
-* templates/ folder
+* mbox file!
 
 * Pull requests from strangers are cool!
-
 
 
 # Historical Information
