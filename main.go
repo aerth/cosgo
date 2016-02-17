@@ -110,7 +110,7 @@ func main() {
 	// Switch to file log so we can ctrl+c and launch another instance :)
 
 	if *mailbox == true {
-		log.Println("mailbox mode: [sending mail to casgo.mbox]")
+		log.Println("mailbox mode: not enabled just saying")
 		//CreateMailBox()
 	}
 

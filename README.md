@@ -77,6 +77,8 @@ CASGO_DESTINATION=your@email.com
 
 
 ## Sample Nginx Config
+For use when setting CASGO_API_KEY=contact
+
 
 ```nginx
 server {
@@ -94,11 +96,6 @@ server {
 }
 
 ```
-
-
-
-Repeat for each virtual host. nginx server block coming soon.
-
 
 # Future
 
