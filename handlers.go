@@ -28,37 +28,36 @@ var poscenter string = `">
 
 // Routing URL handlers
 
-
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
-		t, err := template.New("Index").ParseFiles("./templates/index.html")
-		if err != nil {
+	t, err := template.New("Index").ParseFiles("./templates/index.html")
+	if err != nil {
 
-			data := map[string]interface{}{
-				"Logo":           casgologo,
-				"Key":            getKey(),
-				csrf.TemplateTag: csrf.TemplateField(r),
-				//		"Captcha":
-			}
-
-			t.ExecuteTemplate(w, "Index", data)
-		} else {
-
-			data := map[string]interface{}{
-				"Logo":           casgologo,
-				"Key":            getKey(),
-				csrf.TemplateTag: csrf.TemplateField(r),
-				"CaptchaId":      captcha.New(),
-				//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
-			}
-
-			t.ExecuteTemplate(w, "Index", data)
-			// t.ExecuteTemplate(w, "Contact", key)
+		data := map[string]interface{}{
+			"Logo":           casgologo,
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			//		"Captcha":
 		}
-		// log.Println(t.ExecuteTemplate(w, "Contact", key,))
 
-		log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		t.ExecuteTemplate(w, "Index", data)
+	} else {
+
+		data := map[string]interface{}{
+			"Logo":           casgologo,
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			"CaptchaId":      captcha.New(),
+			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
+		}
+
+		t.ExecuteTemplate(w, "Index", data)
+		// t.ExecuteTemplate(w, "Contact", key)
 	}
+	// log.Println(t.ExecuteTemplate(w, "Contact", key,))
+
+	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+}
 
 // I love lamp. This displays affection for r.URL.Path[1:]
 
