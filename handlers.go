@@ -5,6 +5,7 @@ import (
 	// soon...
 	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
+	"github.com/microcosm-cc/bluemonday"
 	"html/template"
 	"log"
 	"net"
@@ -60,15 +61,16 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // I love lamp. This displays affection for r.URL.Path[1:]
-
+// Casgo loves bluemonday ;D
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
+	p := bluemonday.UGCPolicy()
 	subdomain := getSubdomain(r)
-
+	lol := p.Sanitize(r.URL.Path[1:])
 	if subdomain == "" {
-		fmt.Fprintf(w, "I love %s!", r.URL.Path[1:])
-		log.Printf("I love %s says %s at %s", r.URL.Path[1:], r.UserAgent(), r.RemoteAddr)
+		fmt.Fprintf(w, "I love %s!", lol)
+		log.Printf("I love %s says %s at %s", lol, r.UserAgent(), r.RemoteAddr)
 	} else {
-		fmt.Fprintf(w, "%s loves %s!", subdomain, r.URL.Path[1:])
+		fmt.Fprintf(w, "%s loves %s!", subdomain, lol)
 		log.Printf("I love %s says %s at %s", subdomain, r.UserAgent(), r.RemoteAddr)
 	}
 
