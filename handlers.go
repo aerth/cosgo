@@ -142,7 +142,8 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 		return
 	}
 	if sendEmail(destination, form) {
-		fmt.Fprintln(rw, "Success! Check your inbox!")
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		http.Redirect(rw, r, "/", 301)
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 	} else {
 		log.Printf("debug: %s at %s", form, destination)
