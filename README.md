@@ -7,15 +7,11 @@ or...
 ###############################################################################
 ###############################################################################
 
-Run it 100 times for 100 different one page web sites on your server.
-
-Keep it on @reboot and every couple minutes cronjob.
-
-Contact form sends mail with mandrill for free.
-
-Enjoy Cosgo. Ongoing testing on NetBSD and Debian servers.
-
-Work in progress.
+* Run it 100 times for 100 different one page web sites on your server.
+* Keep it on @reboot and every couple minutes cronjob.
+* Contact form sends mail with mandrill for free.
+* Enjoy Cosgo. Ongoing testing on NetBSD and Debian servers.
+* Work in progress.
 
 ## 
 
