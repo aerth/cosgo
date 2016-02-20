@@ -65,6 +65,7 @@ func main() {
 	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
 	mailbox := flag.Bool("mailbox", false, "disable mandrill send")
 	fastcgi := flag.Bool("fastcgi", false, "use fastcgi with nginx")
+	static := flag.Bool("static", true, "use -static=false to disable")
 	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
 	flag.Parse()
 
@@ -111,6 +112,7 @@ func main() {
 	// Magic URL Generator for API endpoint
 	r.HandleFunc("/"+casgoAPIKey+"/send", EmailHandler)
 	//r.Handle("/static/{static}", http.FileServer(http.Dir("./static")))
+if *static == true 	{
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 	ss := http.FileServer(http.Dir("./static/"))
 	// Serve /static folder and favicon etc
@@ -118,6 +120,8 @@ func main() {
 	r.Path("/robots.txt").Handler(ss)
 	r.Path("/sitemap.xml").Handler(ss)
 	r.PathPrefix("/static/{whatever}").Handler(s)
+}
+
 	r.HandleFunc("/{whatever}", LoveHandler)
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))

@@ -1,3 +1,5 @@
+# Contact and Static in Golang
+or
 # Contact API Server in Golang
 
 Copyright (c) 2016 aerth
@@ -17,7 +19,7 @@ casgo -debug
 
 ```
 
-or
+or with nginx:
 
 ```shell
 export MANDRILL_KEY=123456789
@@ -36,8 +38,9 @@ MANDRILL_KEY=134 CASGO_DESTINATION=1345 CASGO_API_KEY=contact casgo -debug -inse
 ```
 ########
 
+
+## Usage of casgo:
 ```
-Usage of casgo:
   -bind string
     	default: 127.0.0.1 (default "127.0.0.1")
   -debug
@@ -50,12 +53,14 @@ Usage of casgo:
     	save messages to an local mbox file
   -port string
     	HTTP Port to listen on (default "8080")
-
+  -static (default on)
+      serve static files from ./static directory
 ```
+
 
 ###################
 
-### Be sure to copy the templates/ folder to whereever your binary will exit.
+### Be sure to copy the templates and static folders to whereever your binary will exit.
 
 ## Sample Cron
 
@@ -77,7 +82,7 @@ CASGO_DESTINATION=your@email.com
 
 
 ## Sample Nginx Config
-For use when setting CASGO_API_KEY=contact
+For use when setting CASGO_API_KEY=contact, and using a different system for serving pages.
 
 
 ```nginx
@@ -97,13 +102,34 @@ server {
 
 ```
 
+or with fastcgi:
+
+
+```nginx
+server {
+        server_name default_address;
+        listen 80;
+
+        location / {
+
+        fastcgi_pass 127.0.0.1:6099;
+        include $fastcgi_params;
+        }
+
+}
+
+```
 # Future
 
 * Option to use different mail handler (not only mandrill)
 
-* remove flags and use env variables!
+* *remove flags and use env variables!*
 
-* mbox file!
+* -mailbox flag disables mandrill and uses a local casgo.mbox file
+
+* better 404 handling on /static/
+
+* option for log level 0-5
 
 * Pull requests from strangers are cool!
 
