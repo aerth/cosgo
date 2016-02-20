@@ -96,7 +96,7 @@ func main() {
 
 	// Custom 404 redirect to /
 	r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
-
+	
 	// Should be called BlankPageHandler
 	r.HandleFunc("/", HomeHandler)
 	//r.HandleFunc("/favicon.ico", StaticHandler)
@@ -116,15 +116,20 @@ func main() {
 	//r.Methods("GET").PathPrefix("/captcha2").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 
 	// Fun for 404s
+	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+	ss := http.FileServer(http.Dir("./static/"))
+	r.Path("/favicon.ico").Handler(ss)
+	r.Path("/robots.txt").Handler(ss)
+	r.Path("/sitemap.xml").Handler(ss)
+	r.PathPrefix("/static/").Handler(s)
+
 	r.HandleFunc("/{whatever}", LoveHandler)
 
 
 	// Serve /static folder and favicon etc
-	serveSingle("/sitemap.xml", "./sitemap.xml")
-	serveSingle("/favicon.ico", "./favicon.ico")
-	serveSingle("/robots.txt", "./robots.txt")
-	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
-	r.PathPrefix("/static/").Handler(s)
+	// r.serveSingle("/sitemap.xml", "./sitemap.xml")
+	// r.serveSingle("/favicon.ico", "./favicon.ico")
+	// r.serveSingle("/robots.txt", "./robots.txt")
 
 
 	// Retrieve Captcha IMG and WAV
@@ -346,6 +351,10 @@ func getSubdomain(r *http.Request) string {
 	}
 	return ""
 }
+
+
+
+// Serve Static
 func serveSingle(pattern string, filename string) {
     http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
         http.ServeFile(w, r, filename)
