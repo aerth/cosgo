@@ -81,7 +81,9 @@ func main() {
 	}
 	//For now...
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
-	//From environmental variable.
+
+
+	//Quick Self Test
 	mandrillKey = os.Getenv("MANDRILL_KEY")
 	if mandrillKey == "" && *mailbox == false{
 		log.Fatal("MANDRILL_KEY is Crucial. Type: export MANDRILL_KEY=123456789")
@@ -92,7 +94,11 @@ func main() {
 		log.Fatal("CASGO_DESTINATION is Crucial. Type: export CASGO_DESTINATION=\"your@email.com\"")
 		os.Exit(1)
 	}
+	_, err := template.New("Index").ParseFiles("./templates/index.html")
+	if err != nil {
+		log.Fatal("Template Error")
 
+	}
 // Right-clickable for preview
 	log.Printf("listening on http://%s:%s", *bind, *port)
 
@@ -215,20 +221,12 @@ func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 			csrf.TemplateTag: csrf.TemplateField(r),
 		}
 		t.ExecuteTemplate(w, "Error", data)
-	} else {
-		data := map[string]interface{}{
-			"Key": getKey(),
-
-			csrf.TemplateTag: csrf.TemplateField(r),
-			"CaptchaId":      captcha.New(),
-		}
-
-		t.ExecuteTemplate(w, "Error", data)
-
-	}
+	}else
+	{
 
 	log.Printf("error: %s at %s", r.UserAgent(), r.RemoteAddr)
-
+	log.Printf("debug: %s", err)
+}
 }
 
 // ContactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
