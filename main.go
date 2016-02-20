@@ -55,6 +55,7 @@ func main() {
 
 	// We can set the CASGO_API_KEY environment variable, or it defaults to a new random one!
 
+	log.Println("\n\ncasgo v0.4\n\nCopyright 2016 aerth\n\n")
 	if os.Getenv("CASGO_API_KEY") == "" {
 		log.Println("Generating Random API Key...")
 
@@ -134,7 +135,7 @@ func main() {
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
-	http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
+	//http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
 
 	//http.Handle("/captcha/", captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	http.Handle("/", r)
