@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -10,7 +11,6 @@ import (
 	"net/http/fcgi"
 	"os"
 	"time"
-	"fmt"
 
 	"html/template"
 
@@ -18,10 +18,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 var (
@@ -102,11 +102,6 @@ func main() {
 	r.HandleFunc("/", HomeHandler)
 	//r.HandleFunc("/favicon.ico", StaticHandler)
 
-
-
-
-
-
 	// This is the meat, for behind a reverse proxy.
 	r.HandleFunc("/"+casgoAPIKey+"/form", ContactHandler)
 	r.HandleFunc("/"+casgoAPIKey+"/form/", ContactHandler)
@@ -135,7 +130,6 @@ func main() {
 	// r.serveSingle("/sitemap.xml", "./sitemap.xml")
 	// r.serveSingle("/favicon.ico", "./favicon.ico")
 	// r.serveSingle("/robots.txt", "./robots.txt")
-
 
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
@@ -185,12 +179,12 @@ func main() {
 
 }
 
-
 // handlers
 
 func notFound(w http.ResponseWriter, r *http.Request) {
-  http.ServeFile(w, r, "templates/404.html")
+	http.ServeFile(w, r, "templates/404.html")
 }
+
 // Routing URL handlers
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -238,7 +232,6 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-
 // CustomErrorHandler allows casgo administrator to customize the 404 Error page
 // Parses the ./templates/error.html file.
 func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
@@ -251,22 +244,19 @@ func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 		t.ExecuteTemplate(w, "Error", data)
 	} else {
 		data := map[string]interface{}{
-			"Key":            getKey(),
+			"Key": getKey(),
 
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.New(),
-
 		}
 
 		t.ExecuteTemplate(w, "Error", data)
 
 	}
 
-		log.Printf("error: %s at %s", r.UserAgent(), r.RemoteAddr)
+	log.Printf("error: %s at %s", r.UserAgent(), r.RemoteAddr)
 
 }
-
-
 
 // ContactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +268,6 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
-
 		}
 
 		t.ExecuteTemplate(w, "Contact", data)
@@ -289,14 +278,13 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.New(),
-
 		}
 
 		t.ExecuteTemplate(w, "Contact", data)
 
 	}
 
-		log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 
 }
 
@@ -391,16 +379,12 @@ func getSubdomain(r *http.Request) string {
 	return ""
 }
 
-
-
 // Serve Static
 func serveSingle(pattern string, filename string) {
-    http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-        http.ServeFile(w, r, filename)
-    })
+	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filename)
+	})
 }
-
-
 
 // Key Generator
 func init() {
