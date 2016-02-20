@@ -2,9 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/dchest/captcha"
-	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
+
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -12,6 +11,17 @@ import (
 	"net/http/fcgi"
 	"os"
 	"time"
+
+	"html/template"
+
+	//http "net/http"
+	"net/url"
+	"strings"
+
+	"github.com/dchest/captcha"
+	"github.com/gorilla/csrf"
+	"github.com/gorilla/mux"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 var (
@@ -60,7 +70,7 @@ func main() {
 	}
 	//
 	port := flag.String("port", "8080", "HTTP Port to listen on")
-	debug := flag.Bool("debug", false, "be verbose, dont switch to logfile")
+	Debug := flag.Bool("debug", false, "be verbose, dont switch to logfile")
 	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer")
 	mailbox := flag.Bool("mailbox", false, "save messages to an local mbox file")
 	fastcgi := flag.Bool("fastcgi", false, "use fastcgi")
@@ -85,10 +95,12 @@ func main() {
 	r := mux.NewRouter()
 
 	// Custom 404 redirect to /
-	r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
+	//r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
+	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
 
 	// Should be called BlankPageHandler
 	r.HandleFunc("/", HomeHandler)
+	//r.HandleFunc("/favicon.ico", StaticHandler)
 
 	// This is the meat, for behind a reverse proxy.
 	r.HandleFunc("/"+casgoAPIKey+"/form", ContactHandler)
@@ -100,8 +112,29 @@ func main() {
 	//r.Methods("GET").PathPrefix("/captcha2").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 
 	// Fun for 404s
+	//r.Handle("/static/{static}", http.FileServer(http.Dir("./static")))
+
+	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+	ss := http.FileServer(http.Dir("./static/"))
+
+	r.Path("/favicon.ico").Handler(ss)
+	r.Path("/robots.txt").Handler(ss)
+	r.Path("/sitemap.xml").Handler(ss)
+	r.PathPrefix("/static/{whatever}").Handler(s)
+
 	r.HandleFunc("/{whatever}", LoveHandler)
+
+	r.Methods("GET").PathPrefix("/static/").Handler(ss)
+
+	// Serve /static folder and favicon etc
+	// r.serveSingle("/sitemap.xml", "./sitemap.xml")
+	// r.serveSingle("/favicon.ico", "./favicon.ico")
+	// r.serveSingle("/robots.txt", "./robots.txt")
+
+	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
+	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
+	http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
 
 	//http.Handle("/captcha/", captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	http.Handle("/", r)
@@ -114,11 +147,11 @@ func main() {
 		//CreateMailBox()
 	}
 
-	if *debug == false {
+	if *Debug == false {
 		log.Println("quiet mode: [switching logs to casgo.log]")
 		OpenLogFile()
 	} else {
-		log.Println("debug on: [not using casgo.log]")
+		log.Println("Debug on: [not using casgo.log]")
 	}
 
 	if *fastcgi == true {
@@ -146,6 +179,213 @@ func main() {
 
 }
 
+// handlers
+
+func notFound(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "templates/404.html")
+}
+
+// Routing URL handlers
+
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+
+	t, err := template.New("Index").ParseFiles("./templates/index.html")
+	if err != nil {
+
+		data := map[string]interface{}{
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			//		"Captcha":
+		}
+
+		t.ExecuteTemplate(w, "Index", data)
+	} else {
+
+		data := map[string]interface{}{
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			"CaptchaId":      captcha.New(),
+			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
+		}
+
+		t.ExecuteTemplate(w, "Index", data)
+		// t.ExecuteTemplate(w, "Contact", key)
+	}
+	// log.Println(t.ExecuteTemplate(w, "Contact", key,))
+
+	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+}
+
+// I love lamp. This displays affection for r.URL.Path[1:]
+
+func LoveHandler(w http.ResponseWriter, r *http.Request) {
+	p := bluemonday.UGCPolicy()
+	subdomain := getSubdomain(r)
+	lol := p.Sanitize(r.URL.Path[1:])
+	if subdomain == "" {
+		fmt.Fprintf(w, "I love %s!", lol)
+		log.Printf("I love %s says %s at %s", lol, r.UserAgent(), r.RemoteAddr)
+	} else {
+		fmt.Fprintf(w, "%s loves %s!", subdomain, lol)
+		log.Printf("I love %s says %s at %s", subdomain, r.UserAgent(), r.RemoteAddr)
+	}
+
+}
+
+// CustomErrorHandler allows casgo administrator to customize the 404 Error page
+// Parses the ./templates/error.html file.
+func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
+	t, err := template.New("Error").ParseFiles("./templates/error.html")
+	if err != nil {
+		data := map[string]interface{}{
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+		}
+		t.ExecuteTemplate(w, "Error", data)
+	} else {
+		data := map[string]interface{}{
+			"Key": getKey(),
+
+			csrf.TemplateTag: csrf.TemplateField(r),
+			"CaptchaId":      captcha.New(),
+		}
+
+		t.ExecuteTemplate(w, "Error", data)
+
+	}
+
+	log.Printf("error: %s at %s", r.UserAgent(), r.RemoteAddr)
+
+}
+
+// ContactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
+func ContactHandler(w http.ResponseWriter, r *http.Request) {
+
+	t, err := template.New("Contact").ParseFiles("./templates/form.html")
+	if err != nil {
+
+		data := map[string]interface{}{
+
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+		}
+
+		t.ExecuteTemplate(w, "Contact", data)
+	} else {
+
+		data := map[string]interface{}{
+
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+			"CaptchaId":      captcha.New(),
+		}
+
+		t.ExecuteTemplate(w, "Contact", data)
+
+	}
+
+	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+
+}
+
+// Redirect everything /
+func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
+	http.Redirect(rw, r, "/", 301)
+}
+
+// Uses environmental variable on launch to determine Destination
+func EmailHandler(rw http.ResponseWriter, r *http.Request) {
+	destination := casgoDestination
+	var query url.Values
+	if r.Method == "POST" {
+		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
+			fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
+			http.Redirect(rw, r, "/", 301)
+		} else {
+			r.ParseForm()
+			query = r.Form
+			EmailSender(rw, r, destination, query)
+		}
+	} else {
+
+		http.Redirect(rw, r, "/", 301)
+		//fmt.Fprintln(rw, "Please submit via POST.")
+	}
+
+}
+
+// Will introduce success/fail in the templates soon!!
+func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+	form := ParseQuery(query)
+	if form.Email == "" {
+		http.Redirect(rw, r, "/", 301)
+		return
+	}
+	if sendEmail(destination, form) {
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		http.Redirect(rw, r, "/", 301)
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+	} else {
+		log.Printf("Debug: %s at %s", form, destination)
+		fmt.Fprintln(rw, "Uh-oh! Check your mandrill settings/api-logs!")
+		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+	}
+}
+
+func ParseQuery(query url.Values) *Form {
+	form := new(Form)
+	additionalFields := ""
+	for k, v := range query {
+		k = strings.ToLower(k)
+		if k == "email" {
+			form.Email = v[0]
+			//} else if (k == "name") {
+			//	form.Name = v[0]
+		} else if k == "subject" {
+			form.Subject = v[0]
+		} else if k == "message" {
+			form.Message = k + ": " + v[0] + "<br>\n"
+		} else {
+			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
+		}
+	}
+	if form.Subject == "" {
+		form.Subject = "You have mail!"
+	}
+	if additionalFields != "" {
+		if form.Message == "" {
+			form.Message = form.Message + "Message:\n<br>" + additionalFields
+		} else {
+			form.Message = form.Message + "\n<br>Additional:\n<br>" + additionalFields
+		}
+	}
+	return form
+}
+
+func getSubdomain(r *http.Request) string {
+	type Subdomains map[string]http.Handler
+	hostparts := strings.Split(r.Host, ":")
+	requesthost := hostparts[0]
+	if net.ParseIP(requesthost) == nil {
+		log.Println("Requested domain: " + requesthost)
+		domainParts := strings.Split(requesthost, ".")
+		log.Println("Subdomain:" + domainParts[0])
+		if len(domainParts) > 2 {
+			if domainParts[0] != "127" {
+				return domainParts[0]
+			}
+		}
+	}
+	return ""
+}
+
+// Serve Static
+func serveSingle(pattern string, filename string) {
+	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filename)
+	})
+}
+
 // Key Generator
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -166,9 +406,9 @@ func getKey() string {
 	return casgoAPIKey
 }
 
-// This function opens a log file. "debug.log"
+// This function opens a log file. "Debug.log"
 func OpenLogFile() {
-	f, err := os.OpenFile("./casgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
+	f, err := os.OpenFile("./casgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		log.Fatal("error opening file: %v", err)
 		os.Exit(1)
