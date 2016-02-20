@@ -55,7 +55,7 @@ func main() {
 
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth
 	// You should recieve a copy of the MIT license with this software.
-	log.Println("\n\n\tcasgo v0.4\n\n\tCopyright 2016 aerth\n\n\tSource code at https://github.com/aerth/casgo\n\n")
+	log.Println("\n\n\tcasgo v0.4\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/casgo\n\n")
 
 	// We can set the CASGO_API_KEY environment variable, or it defaults to a new random one!
 
