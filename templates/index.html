@@ -9,39 +9,7 @@
 <body>
 
 
-  <!-- casgo is free software -->
-
-
-  <script>
-  function setSrcQuery(e, q) {
-  	var src  = e.src;
-  	var p = src.indexOf('?');
-  	if (p >= 0) {
-  		src = src.substr(0, p);
-  	}
-  	e.src = src + "?" + q
-  }
-  function playAudio() {
-  	var le = document.getElementById("lang");
-  	var lang = le.options[le.selectedIndex].value;
-  	var e = document.getElementById('audio')
-  	setSrcQuery(e, "lang=" + lang)
-  	e.style.display = 'inline';
- 	e.autoplay = 'true';
-  	return false;
-  }
-  function changeLang() {
-  	var e = document.getElementById('audio')
-  	if (e.style.display == 'block') {
-  		playAudio();
-  	}
-  }
-  function reload() {
-  	setSrcQuery(document.getElementById('image'), "reload=" + (new Date()).getTime());
-  	setSrcQuery(document.getElementById('audio'), (new Date()).getTime());
-  	return false;
-  }
-  </script>
+  <!-- casgo is free software. read more at https://github.com/aerth/casgo! -->
 
 <div class="container">
   <div class="row">
@@ -84,6 +52,37 @@
 </div>
 
 </div>
+<script>
+function setSrcQuery(e, q) {
+  var src  = e.src;
+  var p = src.indexOf('?');
+  if (p >= 0) {
+    src = src.substr(0, p);
+  }
+  e.src = src + "?" + q
+}
+function playAudio() {
+  var le = document.getElementById("lang");
+  var lang = le.options[le.selectedIndex].value;
+  var e = document.getElementById('audio')
+  setSrcQuery(e, "lang=" + lang)
+  e.style.display = 'inline';
+  e.autoplay = 'true';
+  return false;
+}
+function changeLang() {
+  var e = document.getElementById('audio')
+  if (e.style.display == 'block') {
+    playAudio();
+  }
+}
+function reload() {
+  setSrcQuery(document.getElementById('image'), "reload=" + (new Date()).getTime());
+  setSrcQuery(document.getElementById('audio'), (new Date()).getTime());
+  return false;
+}
+</script>
+
 </body>
 </html>
 {{end}}
