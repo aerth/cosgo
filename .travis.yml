@@ -1,4 +1,1 @@
 language: go
-script: go get github.com/aerth/cosgo && go test
-notifications:
-  email: false
