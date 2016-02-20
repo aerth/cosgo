@@ -95,8 +95,9 @@ func main() {
 	r := mux.NewRouter()
 
 	// Custom 404 redirect to /
-	r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
-	
+	//r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
+	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
+
 	// Should be called BlankPageHandler
 	r.HandleFunc("/", HomeHandler)
 	//r.HandleFunc("/favicon.ico", StaticHandler)
@@ -116,15 +117,19 @@ func main() {
 	//r.Methods("GET").PathPrefix("/captcha2").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 
 	// Fun for 404s
+	//r.Handle("/static/{static}", http.FileServer(http.Dir("./static")))
+
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 	ss := http.FileServer(http.Dir("./static/"))
+
 	r.Path("/favicon.ico").Handler(ss)
 	r.Path("/robots.txt").Handler(ss)
 	r.Path("/sitemap.xml").Handler(ss)
-	r.PathPrefix("/static/").Handler(s)
+	r.PathPrefix("/static/{whatever}").Handler(s)
 
 	r.HandleFunc("/{whatever}", LoveHandler)
 
+	r.Methods("GET").PathPrefix("/static/").Handler(ss)
 
 	// Serve /static folder and favicon etc
 	// r.serveSingle("/sitemap.xml", "./sitemap.xml")
@@ -134,6 +139,8 @@ func main() {
 
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
+	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
+	http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
 
 	//http.Handle("/captcha/", captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	http.Handle("/", r)
@@ -181,7 +188,9 @@ func main() {
 
 // handlers
 
-
+func notFound(w http.ResponseWriter, r *http.Request) {
+  http.ServeFile(w, r, "templates/404.html")
+}
 // Routing URL handlers
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +238,37 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Display contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
+
+// CustomErrorHandler allows casgo administrator to customize the 404 Error page
+// Parses the ./templates/error.html file.
+func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
+	t, err := template.New("Error").ParseFiles("./templates/error.html")
+	if err != nil {
+		data := map[string]interface{}{
+			"Key":            getKey(),
+			csrf.TemplateTag: csrf.TemplateField(r),
+		}
+		t.ExecuteTemplate(w, "Error", data)
+	} else {
+		data := map[string]interface{}{
+			"Key":            getKey(),
+
+			csrf.TemplateTag: csrf.TemplateField(r),
+			"CaptchaId":      captcha.New(),
+
+		}
+
+		t.ExecuteTemplate(w, "Error", data)
+
+	}
+
+		log.Printf("error: %s at %s", r.UserAgent(), r.RemoteAddr)
+
+}
+
+
+
+// ContactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.New("Contact").ParseFiles("./templates/form.html")
