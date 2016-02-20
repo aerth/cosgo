@@ -53,15 +53,25 @@ const (
 
 func main() {
 
+	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth
+	// You should recieve a copy of the MIT license with this software.
+	log.Println("\n\n\tcasgo v0.4\n\n\tCopyright 2016 aerth\n\n\tSource code at https://github.com/aerth/casgo\n\n")
+
 	// We can set the CASGO_API_KEY environment variable, or it defaults to a new random one!
 
-	log.Println("\n\ncasgo v0.4\n\nCopyright 2016 aerth\n\n")
+	//
+	port := flag.String("port", "8080", "HTTP Port to listen on")
+	Debug := flag.Bool("debug", false, "be verbose, dont switch to casgo.log")
+	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
+	mailbox := flag.Bool("mailbox", false, "disable mandrill send")
+	fastcgi := flag.Bool("fastcgi", false, "use fastcgi with nginx")
+	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
+	flag.Parse()
+
 	if os.Getenv("CASGO_API_KEY") == "" {
 		log.Println("Generating Random API Key...")
-
 		// The length of the API key can be modified here.
 		casgoAPIKey = GenerateAPIKey(20)
-
 		// Print new GenerateAPIKey
 		log.Println("CASGO_API_KEY:", getKey())
 	} else {
@@ -69,80 +79,49 @@ func main() {
 		// Print selected CASGO_API_KEY
 		log.Println("CASGO_API_KEY:", getKey())
 	}
-	//
-	port := flag.String("port", "8080", "HTTP Port to listen on")
-	Debug := flag.Bool("debug", false, "be verbose, dont switch to logfile")
-	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer")
-	mailbox := flag.Bool("mailbox", false, "save messages to an local mbox file")
-	fastcgi := flag.Bool("fastcgi", false, "use fastcgi")
-	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1")
-	flag.Parse()
-
+	//For now...
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
+	//From environmental variable.
 	mandrillKey = os.Getenv("MANDRILL_KEY")
-	if mandrillKey == "" {
+	if mandrillKey == "" && *mailbox == false{
 		log.Fatal("MANDRILL_KEY is Crucial. Type: export MANDRILL_KEY=123456789")
 		os.Exit(1)
 	}
-
 	casgoDestination = os.Getenv("CASGO_DESTINATION")
-	if casgoDestination == "" {
+	if casgoDestination == "" && *mailbox == false {
 		log.Fatal("CASGO_DESTINATION is Crucial. Type: export CASGO_DESTINATION=\"your@email.com\"")
 		os.Exit(1)
 	}
 
-	log.Printf("listening on http://127.0.0.1:%s", *port)
+// Right-clickable for preview
+	log.Printf("listening on http://%s:%s", *bind, *port)
 
+//Begin Routing
 	r := mux.NewRouter()
-
-	// Custom 404 redirect to /
-	//r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
 	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
-
-	// Should be called BlankPageHandler
 	r.HandleFunc("/", HomeHandler)
-	//r.HandleFunc("/favicon.ico", StaticHandler)
-
-	// This is the meat, for behind a reverse proxy.
 	r.HandleFunc("/"+casgoAPIKey+"/form", ContactHandler)
 	r.HandleFunc("/"+casgoAPIKey+"/form/", ContactHandler)
-	//	r.HandleFunc("/contact/", ContactHandler)
-
 	// Magic URL Generator for API endpoint
 	r.HandleFunc("/"+casgoAPIKey+"/send", EmailHandler)
-	//r.Methods("GET").PathPrefix("/captcha2").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
-
-	// Fun for 404s
 	//r.Handle("/static/{static}", http.FileServer(http.Dir("./static")))
-
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 	ss := http.FileServer(http.Dir("./static/"))
-
+	// Serve /static folder and favicon etc
 	r.Path("/favicon.ico").Handler(ss)
 	r.Path("/robots.txt").Handler(ss)
 	r.Path("/sitemap.xml").Handler(ss)
 	r.PathPrefix("/static/{whatever}").Handler(s)
-
 	r.HandleFunc("/{whatever}", LoveHandler)
-
-	r.Methods("GET").PathPrefix("/static/").Handler(ss)
-
-	// Serve /static folder and favicon etc
-	// r.serveSingle("/sitemap.xml", "./sitemap.xml")
-	// r.serveSingle("/favicon.ico", "./favicon.ico")
-	// r.serveSingle("/robots.txt", "./robots.txt")
-
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
 	//http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
-
-	//http.Handle("/captcha/", captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	http.Handle("/", r)
-	//r.HandleFunc("/captcha/",captcha.Server(captcha.StdWidth, captcha.StdHeight))
+//End Routing
+
 
 	// Switch to file log so we can ctrl+c and launch another instance :)
-
 	if *mailbox == true {
 		log.Println("mailbox mode: not enabled just saying")
 		//CreateMailBox()
@@ -180,14 +159,8 @@ func main() {
 
 }
 
-// handlers
-
-func notFound(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "templates/404.html")
-}
-
-// Routing URL handlers
-
+// HomeHandler parses the ./templates/index.html template file.
+// This returns a web page with a form, captcha, CSRF token, and the casgo API key to send the message.
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
@@ -206,19 +179,18 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.New(),
-			//	 "Context": &Context{true}, // Set to false will prevent addClassIfActive to print
 		}
 
 		t.ExecuteTemplate(w, "Index", data)
-		// t.ExecuteTemplate(w, "Contact", key)
+
 	}
-	// log.Println(t.ExecuteTemplate(w, "Contact", key,))
+
 
 	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 }
 
+// LoveHandler is just for fun.
 // I love lamp. This displays affection for r.URL.Path[1:]
-
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
 	p := bluemonday.UGCPolicy()
 	subdomain := getSubdomain(r)
@@ -289,12 +261,12 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Redirect everything /
+// RedirectHomeHandler redirects everyone home ("/") with a 301 redirect.
 func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, "/", 301)
 }
 
-// Uses environmental variable on launch to determine Destination
+// EmailHandler checks the Captcha string, and calls EmailSender
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	destination := casgoDestination
 	var query url.Values
@@ -308,14 +280,12 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 			EmailSender(rw, r, destination, query)
 		}
 	} else {
-
 		http.Redirect(rw, r, "/", 301)
-		//fmt.Fprintln(rw, "Please submit via POST.")
 	}
 
 }
 
-// Will introduce success/fail in the templates soon!!
+// EmailSender always returns success for the visitor. This function needs some work.
 func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
 	form := ParseQuery(query)
 	if form.Email == "" {
@@ -380,7 +350,7 @@ func getSubdomain(r *http.Request) string {
 	return ""
 }
 
-// Serve Static
+// serverSingle just shows one file.
 func serveSingle(pattern string, filename string) {
 	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filename)
@@ -394,6 +364,7 @@ func init() {
 
 var runes = []rune("____ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890123456789012345678901234567890")
 
+//GenerateAPIKey does API Key Generation with the given runes.
 func GenerateAPIKey(n int) string {
 	b := make([]rune, n)
 	for i := range b {
@@ -402,12 +373,12 @@ func GenerateAPIKey(n int) string {
 	return string(b)
 }
 
-// Which Key are we using again?
+//getKey returns the current instance's API key as string
 func getKey() string {
 	return casgoAPIKey
 }
 
-// This function opens a log file. "Debug.log"
+//OpenLogFile switches the log engine to a file, rather than stdout
 func OpenLogFile() {
 	f, err := os.OpenFile("./casgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
@@ -416,5 +387,3 @@ func OpenLogFile() {
 	}
 	log.SetOutput(f)
 }
-
-// This is the home page it is blank. "This server is broken"
