@@ -1,16 +1,6 @@
-# cosgo
+## cosgo 
+when all you needed was a contact form, anyways.
 
-Copyright (c) 2016 aerth
-
-###############################################################################
-###############################################################################
-### Contact on Static in Golang
-or...
-### Contact API Server in Golang
-###############################################################################
-###############################################################################
-
-[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
 
 * Contact form sends mail with mandrill for free.
 * Uses `templates/index.html` and `templates/error.html` while serving `static/` files
@@ -18,7 +8,8 @@ or...
 * You can use Cosgo itself to contact the author. https://isupon.us
 * Work in progress. Upgrade often.
 
-## 
+[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
+
 
 ```
 
