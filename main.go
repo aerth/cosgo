@@ -1,11 +1,11 @@
 /*
 
-                           _ 
+                           _
   ___ ___  ___  __ _  ___ | |
  / __/ _ \/ __|/ _` |/ _ \| |
 | (_| (_) \__ \ (_| | (_) |_|
  \___\___/|___/\__, |\___/(_)
-               |___/         
+               |___/
 
 https://github.com/aerth/cosgo
 
@@ -30,6 +30,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"github.com/goware/emailx"
 )
 
 var (
@@ -50,7 +51,7 @@ const (
 	// by default store.
 	CollectNum = 100
 	// Expiration time of captchas used by default store.
-	Expiration = 10 * time.Minute
+    Expiration = 10 * time.Minute
 )
 
 const (
@@ -154,8 +155,8 @@ func main() {
 	}
 
 	// Retrieve Captcha IMG and WAV
-	r.Methods("GET").Path("/captcha/{captchacode}.png").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
-	r.Methods("GET").Path("/captcha/{captchacode}.wav").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
+	r.Methods("GET").Path("/captcha/{captchacode}.png").Handler(captcha.Server(StdWidth, StdHeight))
+	r.Methods("GET").Path("/captcha/{captchacode}.wav").Handler(captcha.Server(StdWidth, StdHeight))
 
 	http.Handle("/", r)
 	//End Routing
@@ -354,10 +355,27 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 // EmailSender always returns success for the visitor. This function needs some work.
 func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
 	form := ParseQuery(query)
+	//Validate user submitted email address
+	err := emailx.Validate(form.Email)
+    if err != nil {
+				fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
+        if err == emailx.ErrInvalidFormat {
+				fmt.Fprintln(rw, "<html><p>Email is not valid format. Would you like to go <a href=\"/\">back</a>?</p></html>")
+        }
+
+        if err == emailx.ErrUnresolvableHost {
+					fmt.Fprintln(rw, "<html><p>We don't recognize that email provider. Would you like to go <a href=\"/\">back</a>?</p></html>")
+
+        }
+    }
+	//Normalize email address
+	form.Email = emailx.Normalize(form.Email)
+	//Is it empty?
 	if form.Email == "" {
 		http.Redirect(rw, r, "/", 301)
 		return
 	}
+
 	if sendEmail(destination, form) {
 		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
 		http.Redirect(rw, r, "/", 301)
