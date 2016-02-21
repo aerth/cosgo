@@ -19,6 +19,7 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/goware/emailx"
 	"github.com/microcosm-cc/bluemonday"
 	"html/template"
 	"log"
@@ -30,7 +31,6 @@ import (
 	"os"
 	"strings"
 	"time"
-	"github.com/goware/emailx"
 )
 
 var (
@@ -51,7 +51,7 @@ const (
 	// by default store.
 	CollectNum = 100
 	// Expiration time of captchas used by default store.
-    Expiration = 10 * time.Minute
+	Expiration = 10 * time.Minute
 )
 
 const (
@@ -314,17 +314,17 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		t.ExecuteTemplate(w, "Contact", data)
-		log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Printf("api: %s at %s", r.UserAgent(), r.RemoteAddr)
 	} else {
 		log.Println("template error")
 		log.Println(err)
+		http.Redirect(w, r, "/", 301)
 	}
 
 }
 
 // RedirectHomeHandler redirects everyone home ("/") with a 301 redirect.
 func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
-
 	p := bluemonday.UGCPolicy()
 	domain := getDomain(r)
 	lol := p.Sanitize(r.URL.Path[1:])
@@ -357,17 +357,17 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	form := ParseQuery(query)
 	//Validate user submitted email address
 	err := emailx.Validate(form.Email)
-    if err != nil {
-				fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
-        if err == emailx.ErrInvalidFormat {
-				fmt.Fprintln(rw, "<html><p>Email is not valid format. Would you like to go <a href=\"/\">back</a>?</p></html>")
-        }
+	if err != nil {
+		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
+		if err == emailx.ErrInvalidFormat {
+			fmt.Fprintln(rw, "<html><p>Email is not valid format. Would you like to go <a href=\"/\">back</a>?</p></html>")
+		}
 
-        if err == emailx.ErrUnresolvableHost {
-					fmt.Fprintln(rw, "<html><p>We don't recognize that email provider. Would you like to go <a href=\"/\">back</a>?</p></html>")
+		if err == emailx.ErrUnresolvableHost {
+			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider. Would you like to go <a href=\"/\">back</a>?</p></html>")
 
-        }
-    }
+		}
+	}
 	//Normalize email address
 	form.Email = emailx.Normalize(form.Email)
 	//Is it empty?
@@ -383,6 +383,7 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	} else {
 		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Printf("Debug: %s to mandrill %s", form, destination)
+
 		t, err := template.New("Error").ParseFiles("./templates/error.html")
 		if err == nil {
 			data := map[string]interface{}{
@@ -400,6 +401,7 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 }
 
 func ParseQuery(query url.Values) *Form {
+	p := bluemonday.UGCPolicy()
 	form := new(Form)
 	additionalFields := ""
 	for k, v := range query {
@@ -410,8 +412,10 @@ func ParseQuery(query url.Values) *Form {
 			//	form.Name = v[0]
 		} else if k == "subject" {
 			form.Subject = v[0]
+			form.Subject = p.Sanitize(form.Subject)
 		} else if k == "message" {
 			form.Message = k + ": " + v[0] + "<br>\n"
+			form.Message = p.Sanitize(form.Message)
 		} else {
 			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
 		}
