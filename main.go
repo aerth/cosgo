@@ -128,7 +128,7 @@ os.Setenv("COSGO_DESTINATION",os.Getenv("CASGO_DESTINATION"))
 	}
 //	r.HandleFunc("/{whatever}", LoveHandler)
 
-	r.HandleFunc("/{whatever}", RedirectHomeHandler)
+//	r.HandleFunc("/{whatever}", RedirectHomeHandler)
 
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
@@ -207,12 +207,12 @@ func QuickSelfTest(){
 // HomeHandler parses the ./templates/index.html template file.
 // This returns a web page with a form, captcha, CSRF token, and the cosgo API key to send the message.
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-
+	log.Printf("home visitor: %s - %s - %s", r.UserAgent(), r.RemoteAddr, r.Host)
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		// Do Something
 		log.Println(err)
-
+		fmt.Fprintf(w, "Error. Please come back soon!")
 	} else {
 							data := map[string]interface{}{
 								"Key":            getKey(),
@@ -221,7 +221,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		t.ExecuteTemplate(w, "Index", data)
 	}
-	log.Printf("visitor: %s - %s - %s", r.UserAgent(), r.RemoteAddr, r.Host)
+
 }
 
 // LoveHandler is just for fun.
@@ -243,6 +243,11 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 // CustomErrorHandler allows cosgo administrator to customize the 404 Error page
 // Parses the ./templates/error.html file.
 func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("visitor: 404 %s - %s at %s", r.Host, r.UserAgent(), r.RemoteAddr)
+		p := bluemonday.UGCPolicy()
+		domain := getDomain(r)
+		lol := p.Sanitize(r.URL.Path[1:])
+		log.Printf("404 on %s/%s", lol, domain)
 	t, err := template.New("Error").ParseFiles("./templates/error.html")
 	if err == nil {
 		data := map[string]interface{}{
@@ -250,40 +255,27 @@ func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 			csrf.TemplateTag: csrf.TemplateField(r),
 		}
 		t.ExecuteTemplate(w, "Error", data)
-	}else
-	{
+	}else	{
 	log.Printf("template error: %s at %s", r.UserAgent(), r.RemoteAddr)
 	log.Println(err)
-}
+	http.Redirect(w, r, "/", 301)
+	}
 }
 
 // ContactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
-
 	t, err := template.New("Contact").ParseFiles("./templates/form.html")
-	if err != nil {
-
+		if err == nil {
+		// Allow form in error page
 		data := map[string]interface{}{
-
-			"Key":            getKey(),
-			csrf.TemplateTag: csrf.TemplateField(r),
-		}
-
-		t.ExecuteTemplate(w, "Contact", data)
-	} else {
-
-		data := map[string]interface{}{
-
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.New(),
 		}
 
 		t.ExecuteTemplate(w, "Contact", data)
-
-	}
-
-	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		}else	{ log.Println("template error"); log.Println(err) }
 
 }
 
