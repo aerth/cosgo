@@ -75,7 +75,7 @@ func main() {
 	mailbox := flag.Bool("mailbox", false, "disable mandrill send")
 	fastcgi := flag.Bool("fastcgi", false, "use fastcgi with nginx")
 	static := flag.Bool("static", true, "use -static=false to disable")
-	redirect := flag.Bool("redirect", false, "disable error.html template")
+	noredirect := flag.Bool("noredirect", false, "enable error.html template")
 	love := flag.Bool("love", false, "show I love ___")
 	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
 	flag.Parse()
@@ -118,7 +118,7 @@ func main() {
 	//Begin Routing
 	r := mux.NewRouter()
 
-	if *redirect == true {
+	if *noredirect == false {
 		r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
 	} else {
 		r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
@@ -400,7 +400,7 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	}
 }
 
-func ParseQuery(query url.Values) *Form {
+func ParseQuery(query url.Values) *For		m {
 	p := bluemonday.UGCPolicy()
 	form := new(Form)
 	additionalFields := ""
