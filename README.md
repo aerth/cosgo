@@ -1,8 +1,8 @@
-# Contact and Static in Golang
-or
-# Contact API Server in Golang
+# cosgo
 
 Copyright (c) 2016 aerth
+
+### Contact on Static in Golang
 
 ## Installation / Updating
 
