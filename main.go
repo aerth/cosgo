@@ -59,6 +59,7 @@ func main() {
 	mailbox := flag.Bool("mailbox", false, "disable mandrill send")
 	fastcgi := flag.Bool("fastcgi", false, "use fastcgi with nginx")
 	static := flag.Bool("static", true, "use -static=false to disable")
+	redirect := flag.Bool("redirect", false, "disable error.html template")
 	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
 	flag.Parse()
 
@@ -95,7 +96,6 @@ os.Setenv("COSGO_DESTINATION",os.Getenv("CASGO_DESTINATION"))
 			log.Println("COSGO_API_KEY:", getKey())
 		}
 
-
 	log.Printf("cosgo is booting up on "+getLink(*fastcgi, *bind, *port))
 	if *fastcgi == true {
 		log.Printf("[fastcgi mode on]")
@@ -103,7 +103,14 @@ os.Setenv("COSGO_DESTINATION",os.Getenv("CASGO_DESTINATION"))
 
 //Begin Routing
 	r := mux.NewRouter()
-	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
+
+		if *redirect == true {
+			r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
+		}else{
+			r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
+		}
+
+//	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
 	r.HandleFunc("/", HomeHandler)
 	r.HandleFunc("/"+cosgoAPIKey+"/form", ContactHandler)
 	r.HandleFunc("/"+cosgoAPIKey+"/form/", ContactHandler)
@@ -116,13 +123,16 @@ os.Setenv("COSGO_DESTINATION",os.Getenv("CASGO_DESTINATION"))
 			r.Path("/favicon.ico").Handler(ss)
 			r.Path("/robots.txt").Handler(ss)
 			r.Path("/sitemap.xml").Handler(ss)
-			r.PathPrefix("/static/{whatever}").Handler(s)
+			r.Path("/static/{dir}/{whatever}.css").Handler(s)
+			r.Path("/static/{dir}/{whatever}.js").Handler(s)
 	}
 //	r.HandleFunc("/{whatever}", LoveHandler)
+
 	r.HandleFunc("/{whatever}", RedirectHomeHandler)
+
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
-	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
+
 	//http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
 	http.Handle("/", r)
 	//End Routing
@@ -234,7 +244,7 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 // Parses the ./templates/error.html file.
 func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.New("Error").ParseFiles("./templates/error.html")
-	if err != nil {
+	if err == nil {
 		data := map[string]interface{}{
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
@@ -242,9 +252,8 @@ func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 		t.ExecuteTemplate(w, "Error", data)
 	}else
 	{
-
-	log.Printf("error: %s at %s", r.UserAgent(), r.RemoteAddr)
-	log.Printf("debug: %s", err)
+	log.Printf("template error: %s at %s", r.UserAgent(), r.RemoteAddr)
+	log.Println(err)
 }
 }
 
