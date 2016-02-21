@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # cosgo
 
 Copyright (c) 2016 aerth
@@ -40,7 +39,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ```
 
 
->>>>>>> 7717ec911e4557951ebbb207d0f40f83eee90b91
 
 ## Installation / Updating
 
