@@ -2,7 +2,7 @@
 if [ -z "$1" ];then
 
 echo "no execute"
-echo "COSGOPORT=8080 update-casgo namehere"
+echo "COSGOPORT=8080 cosgo-upgrade <demonname>"
 exit 1
 fi
 
