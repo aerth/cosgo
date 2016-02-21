@@ -61,6 +61,7 @@ func sendEmail(destinationEmail string, form *Form) bool {
 	//log.Println(responses)
 	if err != nil {
 		log.Println(err)
+		return false
 	}
 	length := len(responses)
 	for i := 0; i < length; i++ {
