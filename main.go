@@ -2,22 +2,17 @@ package main
 
 import (
 	"flag"
-
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"net/url"
 	"net/http"
 	"net/http/fcgi"
 	"os"
 	"time"
-
 	"html/template"
-
-	//http "net/http"
-	"net/url"
 	"strings"
-
 	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -27,8 +22,8 @@ import (
 var (
 	mandrillApiUrl   string
 	mandrillKey      string
-	casgoDestination string
-	casgoAPIKey      string
+	cosgoDestination string
+	cosgoAPIKey      string
 )
 
 type C struct {
@@ -37,7 +32,7 @@ type C struct {
 
 const (
 	// Default number of digits in captcha solution.
-	DefaultLen = 6
+	DefaultLen = 4
 	// The number of captchas created that triggers garbage collection used
 	// by default store.
 	CollectNum = 100
@@ -48,20 +43,18 @@ const (
 const (
 	// Standard width and height of a captcha image.
 	StdWidth  = 240
-	StdHeight = 80
+	StdHeight = 120
 )
 
 func main() {
 
-	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth
+	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// You should recieve a copy of the MIT license with this software.
-	log.Println("\n\n\tcasgo v0.4\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/casgo\n\n")
+	log.Println("\n\n\tcosgo v0.4\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\n")
 
-	// We can set the CASGO_API_KEY environment variable, or it defaults to a new random one!
-
-	//
+	// Set flags from command line
 	port := flag.String("port", "8080", "HTTP Port to listen on")
-	Debug := flag.Bool("debug", false, "be verbose, dont switch to casgo.log")
+	Debug := flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
 	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
 	mailbox := flag.Bool("mailbox", false, "disable mandrill send")
 	fastcgi := flag.Bool("fastcgi", false, "use fastcgi with nginx")
@@ -69,68 +62,70 @@ func main() {
 	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
 	flag.Parse()
 
-	if os.Getenv("CASGO_API_KEY") == "" {
-		log.Println("Generating Random API Key...")
-		// The length of the API key can be modified here.
-		casgoAPIKey = GenerateAPIKey(20)
-		// Print new GenerateAPIKey
-		log.Println("CASGO_API_KEY:", getKey())
-	} else {
-		casgoAPIKey = os.Getenv("CASGO_API_KEY")
-		// Print selected CASGO_API_KEY
-		log.Println("CASGO_API_KEY:", getKey())
-	}
-	//For now...
+
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
 
+	// For backwards compatibility
+if os.Getenv("CASGO_API_KEY") != "" && os.Getenv("COSGO_API_KEY") == "" {
+os.Setenv("COSGO_API_KEY",os.Getenv("CASGO_API_KEY"))
+			log.Println("Please use COSGO_API_KEY...")
+}
+if os.Getenv("CASGO_DESTINATION") != "" && os.Getenv("COSGO_DESTINATION") == "" {
+os.Setenv("COSGO_DESTINATION",os.Getenv("CASGO_DESTINATION"))
+			log.Println("Please use COSGO_DESTINATION...")
+}
 
-	//Quick Self Test
-	mandrillKey = os.Getenv("MANDRILL_KEY")
-	if mandrillKey == "" && *mailbox == false{
-		log.Fatal("MANDRILL_KEY is Crucial. Type: export MANDRILL_KEY=123456789")
-		os.Exit(1)
-	}
-	casgoDestination = os.Getenv("CASGO_DESTINATION")
-	if casgoDestination == "" && *mailbox == false {
-		log.Fatal("CASGO_DESTINATION is Crucial. Type: export CASGO_DESTINATION=\"your@email.com\"")
-		os.Exit(1)
-	}
-	_, err := template.New("Index").ParseFiles("./templates/index.html")
-	if err != nil {
-		log.Fatal("Template Error")
 
+	// Test environmental variables, if we aren't in -mailbox mode.
+	if *mailbox != true {
+		QuickSelfTest()
 	}
-// Right-clickable for preview
-	log.Printf("listening on http://%s:%s", *bind, *port)
+
+
+		//Print API Key
+		if os.Getenv("COSGO_API_KEY") == "" {
+			log.Println("Generating Random API Key...")
+			// The length of the API key can be modified here.
+			cosgoAPIKey = GenerateAPIKey(20)
+			// Print new GenerateAPIKey
+			log.Println("COSGO_API_KEY:", getKey())
+		} else {
+			cosgoAPIKey = os.Getenv("COSGO_API_KEY")
+			// Print selected COSGO_API_KEY
+			log.Println("COSGO_API_KEY:", getKey())
+		}
+
+
+	log.Printf("cosgo is booting up on "+getLink(*fastcgi, *bind, *port))
+	if *fastcgi == true {
+		log.Printf("[fastcgi mode on]")
+	}
 
 //Begin Routing
 	r := mux.NewRouter()
 	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
 	r.HandleFunc("/", HomeHandler)
-	r.HandleFunc("/"+casgoAPIKey+"/form", ContactHandler)
-	r.HandleFunc("/"+casgoAPIKey+"/form/", ContactHandler)
-	// Magic URL Generator for API endpoint
-	r.HandleFunc("/"+casgoAPIKey+"/send", EmailHandler)
-	//r.Handle("/static/{static}", http.FileServer(http.Dir("./static")))
-if *static == true 	{
-	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
-	ss := http.FileServer(http.Dir("./static/"))
-	// Serve /static folder and favicon etc
-	r.Path("/favicon.ico").Handler(ss)
-	r.Path("/robots.txt").Handler(ss)
-	r.Path("/sitemap.xml").Handler(ss)
-	r.PathPrefix("/static/{whatever}").Handler(s)
-}
+	r.HandleFunc("/"+cosgoAPIKey+"/form", ContactHandler)
+	r.HandleFunc("/"+cosgoAPIKey+"/form/", ContactHandler)
+	r.HandleFunc("/"+cosgoAPIKey+"/send", EmailHandler)
 
-	r.HandleFunc("/{whatever}", LoveHandler)
+	if *static == true 	{
+			s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+			ss := http.FileServer(http.Dir("./static/"))
+			// Serve /static folder and favicon etc
+			r.Path("/favicon.ico").Handler(ss)
+			r.Path("/robots.txt").Handler(ss)
+			r.Path("/sitemap.xml").Handler(ss)
+			r.PathPrefix("/static/{whatever}").Handler(s)
+	}
+//	r.HandleFunc("/{whatever}", LoveHandler)
+	r.HandleFunc("/{whatever}", RedirectHomeHandler)
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").PathPrefix("/captcha/").Handler(captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	r.NotFoundHandler = http.HandlerFunc(CustomErrorHandler)
 	//http.NotFoundHandler = r.HandlerFunc(CustomErrorHandler)
 	http.Handle("/", r)
-//End Routing
-
-
+	//End Routing
 	// Switch to file log so we can ctrl+c and launch another instance :)
 	if *mailbox == true {
 		log.Println("mailbox mode: not enabled just saying")
@@ -138,65 +133,85 @@ if *static == true 	{
 	}
 
 	if *Debug == false {
-		log.Println("quiet mode: [switching logs to casgo.log]")
+		log.Println("quiet mode: [switching logs to cosgo.log]")
 		OpenLogFile()
 	} else {
-		log.Println("Debug on: [not using casgo.log]")
+		log.Println("Debug on: [not using cosgo.log]")
 	}
 
+log.Printf("cosgo is live on "+getLink(*fastcgi, *bind, *port))
+// Start Serving!
 	if *fastcgi == true {
-		log.Println("fastcgi [on]")
-		log.Println("secure [off]")
-		listener, err := net.Listen("tcp", *bind+":"+*port)
-		if err != nil {
-			log.Fatal("Could not bind: ", err)
+			listener, err := net.Listen("tcp", *bind+":"+*port)
+			if err != nil {
+					log.Fatal("Could not bind: ", err)
 		}
-		log.Println("info: Listening on", *port)
-		//	fcgi.Serve(listener, nil) // this works but without csrf..!
-		fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r))
-		//log.Fatal(fcgi.Serve( listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
-
-	} else if *insecure == true {
-		log.Println("info: Listening on", *port)
-		log.Println("secure [off]")
-		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
-	} else {
-		log.Println("info: Listening on", *port)
-		// Change this CSRF auth token in production!
-		log.Println("secure [on]")
-		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
-	}
+		if *insecure == true {
+					log.Fatal(fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
+				}else {
+					log.Println("info: https:// only")
+					log.Fatal(fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
+				}
+	} else if *fastcgi == false && *insecure == true {
+			log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
+	} else if *fastcgi == false && *insecure == false {
+					log.Println("info: https:// only")
+					// Change this CSRF auth token in production!
+					log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
+		}
 
 }
 
+// End main function
+
+// Hello functions
+func getKey() string {
+	return cosgoAPIKey
+}
+func getDestination() string {
+	return cosgoDestination
+}
+func getMandrillKey() string {
+	return mandrillKey
+}
+
+func QuickSelfTest(){
+	log.Println("Starting self test...")
+	mandrillKey = os.Getenv("MANDRILL_KEY")
+	if mandrillKey == ""{
+		log.Fatal("Fatal: MANDRILL_KEY is Crucial.\nHint: export MANDRILL_KEY=123456789")
+		os.Exit(1)
+	}
+	cosgoDestination = os.Getenv("COSGO_DESTINATION")
+	if cosgoDestination == "" {
+		log.Fatal("Fatal: COSGO_DESTINATION is Crucial.\nHint: export COSGO_DESTINATION=\"your@email.com\"")
+		os.Exit(1)
+	}
+	_, err := template.New("Index").ParseFiles("./templates/index.html")
+	if err != nil {
+		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
+	}
+	log.Println("Passed self test.")
+}
+
 // HomeHandler parses the ./templates/index.html template file.
-// This returns a web page with a form, captcha, CSRF token, and the casgo API key to send the message.
+// This returns a web page with a form, captcha, CSRF token, and the cosgo API key to send the message.
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
+		// Do Something
+		log.Println(err)
 
-		data := map[string]interface{}{
-			"Key":            getKey(),
-			csrf.TemplateTag: csrf.TemplateField(r),
-			//		"Captcha":
-		}
-
-		t.ExecuteTemplate(w, "Index", data)
 	} else {
-
-		data := map[string]interface{}{
-			"Key":            getKey(),
-			csrf.TemplateTag: csrf.TemplateField(r),
-			"CaptchaId":      captcha.New(),
+							data := map[string]interface{}{
+								"Key":            getKey(),
+								csrf.TemplateTag: csrf.TemplateField(r),
+								"CaptchaId":      captcha.New(),
 		}
-
 		t.ExecuteTemplate(w, "Index", data)
-
 	}
-
-
-	log.Printf("pre-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+	log.Printf("visitor: %s - %s - %s", r.UserAgent(), r.RemoteAddr, r.Host)
 }
 
 // LoveHandler is just for fun.
@@ -215,7 +230,7 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// CustomErrorHandler allows casgo administrator to customize the 404 Error page
+// CustomErrorHandler allows cosgo administrator to customize the 404 Error page
 // Parses the ./templates/error.html file.
 func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.New("Error").ParseFiles("./templates/error.html")
@@ -265,12 +280,18 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectHomeHandler redirects everyone home ("/") with a 301 redirect.
 func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
+
+	p := bluemonday.UGCPolicy()
+	domain := getDomain(r)
+	lol := p.Sanitize(r.URL.Path[1:])
+	log.Printf("Redirecting %s back home on %s", lol, domain)
 	http.Redirect(rw, r, "/", 301)
+
 }
 
 // EmailHandler checks the Captcha string, and calls EmailSender
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
-	destination := casgoDestination
+	destination := cosgoDestination
 	var query url.Values
 	if r.Method == "POST" {
 		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
@@ -334,7 +355,12 @@ func ParseQuery(query url.Values) *Form {
 	}
 	return form
 }
-
+func getDomain(r *http.Request) string {
+	type Domains map[string]http.Handler
+	hostparts := strings.Split(r.Host, ":")
+	requesthost := hostparts[0]
+				return requesthost
+}
 func getSubdomain(r *http.Request) string {
 	type Subdomains map[string]http.Handler
 	hostparts := strings.Split(r.Host, ":")
@@ -376,16 +402,26 @@ func GenerateAPIKey(n int) string {
 }
 
 //getKey returns the current instance's API key as string
-func getKey() string {
-	return casgoAPIKey
-}
+//func getKey() string {
+//	return cosgoAPIKey
+//}
 
 //OpenLogFile switches the log engine to a file, rather than stdout
 func OpenLogFile() {
-	f, err := os.OpenFile("./casgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile("./cosgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		log.Fatal("error opening file: %v", err)
 		os.Exit(1)
 	}
 	log.SetOutput(f)
+}
+
+func getLink(fastcgi bool, bind string, port string) string {
+	if fastcgi == true {
+		link := bind+":"+port
+		return link
+	}else{
+		link := "http://"+bind+":"+port
+		return link
+	}
 }
