@@ -400,7 +400,7 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	}
 }
 
-func ParseQuery(query url.Values) *For		m {
+func ParseQuery(query url.Values) *Form {
 	p := bluemonday.UGCPolicy()
 	form := new(Form)
 	additionalFields := ""
