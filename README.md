@@ -12,11 +12,11 @@ or...
 
 [![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
 
-* Run it 100 times for 100 different one page web sites on your server.
-* Keep it on @reboot and every couple minutes cronjob.
 * Contact form sends mail with mandrill for free.
-* Enjoy Cosgo. Ongoing testing on NetBSD and Debian servers.
-* Work in progress.
+* Uses `templates/index.html` and `templates/error.html` while serving `static/` files
+* Enjoy Cosgo. Ongoing testing on NetBSD and Debian servers. 
+* You can use Cosgo itself to contact the author. https://isupon.us
+* Work in progress. Upgrade often.
 
 ## 
 
