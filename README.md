@@ -106,6 +106,8 @@ server {
 }
 
 ```
+More code examples at https://github.com/aerth/cosgo/wiki 
+Add your use case
 
 # Historical Information
 
