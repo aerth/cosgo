@@ -31,13 +31,15 @@ import (
 	"os"
 	"strings"
 	"time"
+	"errors"
 )
 
 var (
-	mandrillApiUrl   string
+//	mandrillApiUrl   string
 	mandrillKey      string
 	cosgoDestination string
 	cosgoAPIKey      string
+	CSRFKey						[]byte
 )
 
 type C struct {
@@ -52,45 +54,67 @@ const (
 	CollectNum = 100
 	// Expiration time of captchas used by default store.
 	Expiration = 10 * time.Minute
-)
-
-const (
 	// Standard width and height of a captcha image.
 	StdWidth  = 240
 	StdHeight = 120
 )
+//usage shows how available flags.
+func usage() {
+	fmt.Println("\nusage: cosgo [flags]")
+	fmt.Println("\nflags:")
+	time.Sleep(1000 * time.Millisecond)
+	flag.PrintDefaults()
+	time.Sleep(1000 * time.Millisecond)
+	fmt.Println("\nExample: cosgo -insecure -port 8080 -fastcgi -debug")
+}
+var (
+	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
+)
+var (
+    // ErrNoReferer is returned when a HTTPS request provides an empty Referer
+    // header.
+    ErrNoReferer = errors.New("referer not supplied")
+    // ErrBadReferer is returned when the scheme & host in the URL do not match
+    // the supplied Referer header.
+    ErrBadReferer = errors.New("referer invalid")
+    // ErrNoToken is returned if no CSRF token is supplied in the request.
+    ErrNoToken = errors.New("CSRF token not found in request")
+    // ErrBadToken is returned if the CSRF token in the request does not match
+    // the token in the session, or is otherwise malformed.
+    ErrBadToken = errors.New("CSRF token invalid, yo")
+)
+var (
+	port = flag.String("port", "8080", "HTTP Port to listen on")
+	Debug = flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
+	api = flag.Bool("api", false, "Show error.html for /")
+	insecure = flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
+	mailbox = flag.Bool("mailbox", false, "disable mandrill send")
+	fastcgi = flag.Bool("fastcgi", false, "use fastcgi with nginx")
+	static = flag.Bool("static", true, "use -static=false to disable")
+	noredirect = flag.Bool("noredirect", false, "enable error.html template")
+	love = flag.Bool("love", false, "show I love ___")
+	bind = flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
+	help = flag.Bool("help", false, "show usage help and quit")
+)
+
+
 
 func main() {
 
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// You should recieve a copy of the MIT license with this software.
 	log.Println("\n\n\tcosgo v0.4\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo")
-	log.Println("")
-	log.Println("")
+
 	// Set flags from command line
-	port := flag.String("port", "8080", "HTTP Port to listen on")
-	Debug := flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
-	api := flag.Bool("api", false, "Show error.html for /")
-	insecure := flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
-	mailbox := flag.Bool("mailbox", false, "disable mandrill send")
-	fastcgi := flag.Bool("fastcgi", false, "use fastcgi with nginx")
-	static := flag.Bool("static", true, "use -static=false to disable")
-	noredirect := flag.Bool("noredirect", false, "enable error.html template")
-	love := flag.Bool("love", false, "show I love ___")
-	bind := flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
+	flag.Usage = usage
 	flag.Parse()
-
-	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
-
-	// For backwards compatibility
-	if os.Getenv("CASGO_API_KEY") != "" && os.Getenv("COSGO_API_KEY") == "" {
-		os.Setenv("COSGO_API_KEY", os.Getenv("CASGO_API_KEY"))
-		log.Println("Please use COSGO_API_KEY...")
+	args := flag.Args()
+	if len(args) > 1 {
+		usage()
+		os.Exit(2)
 	}
-	if os.Getenv("CASGO_DESTINATION") != "" && os.Getenv("COSGO_DESTINATION") == "" {
-		os.Setenv("COSGO_DESTINATION", os.Getenv("CASGO_DESTINATION"))
-		log.Println("Please use COSGO_DESTINATION...")
-	}
+	//If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
+ 	backwardsComp()
 
 	// Test environmental variables, if we aren't in -mailbox mode.
 	if *mailbox != true {
@@ -110,14 +134,16 @@ func main() {
 		log.Println("COSGO_API_KEY:", getKey())
 	}
 
-	log.Printf("cosgo is booting up on " + getLink(*fastcgi, *bind, *port))
-	if *fastcgi == true {
-		log.Printf("[fastcgi mode on]")
+	if os.Getenv("COSGO_CSRF_KEY") == "" {
+	CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
+	} else {
+		CSRFKey = []byte(os.Getenv("COSGO_CSRF_KEY"))
 	}
 
 	//Begin Routing
 	r := mux.NewRouter()
 
+	//Redirect or show custom error?
 	if *noredirect == false {
 		r.NotFoundHandler = http.HandlerFunc(RedirectHomeHandler)
 	} else {
@@ -131,22 +157,24 @@ func main() {
 		r.HandleFunc("/", CustomErrorHandler)
 	}
 
+	//Magic
 	r.HandleFunc("/"+cosgoAPIKey+"/form", HomeHandler)
 	r.HandleFunc("/"+cosgoAPIKey+"/form/", HomeHandler)
 	r.HandleFunc("/"+cosgoAPIKey+"/send", EmailHandler)
 
+	//Defaults to true. We are serving out of /static/ for now
 	if *static == true {
 		s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 		ss := http.FileServer(http.Dir("./static/"))
 		// Serve /static folder and favicon etc
-		r.Path("/favicon.ico").Handler(ss)
-		r.Path("/robots.txt").Handler(ss)
-		r.Path("/sitemap.xml").Handler(ss)
-		r.Path("/static/{dir}/{whatever}.css").Handler(s)
-		r.Path("/static/{dir}/{whatever}.js").Handler(s)
-		r.Path("/static/{dir}/{whatever}.png").Handler(s)
-		r.Path("/static/{dir}/{whatever}.jpg").Handler(s)
-		r.Path("/static/{dir}/{whatever}.jpeg").Handler(s)
+		r.Methods("GET").Path("/favicon.ico").Handler(ss)
+		r.Methods("GET").Path("/robots.txt").Handler(ss)
+		r.Methods("GET").Path("/sitemap.xml").Handler(ss)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.css").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.js").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.png").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.jpg").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.jpeg").Handler(s)
 		// More static options soon.
 	}
 
@@ -162,7 +190,7 @@ func main() {
 	//End Routing
 
 	if *mailbox == true {
-		log.Println("mailbox mode: not enabled just saying")
+		log.Println("mailbox mode: for testing only.")
 		//CreateMailBox()
 	}
 
@@ -181,23 +209,36 @@ func main() {
 			log.Fatal("Could not bind: ", err)
 		}
 		if *insecure == true {
-			log.Fatal(fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
+			log.Fatal(fcgi.Serve(listener, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(false))(r)))
 		} else {
 			log.Println("info: https:// only")
-			log.Fatal(fcgi.Serve(listener, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
+			log.Fatal(fcgi.Serve(listener, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(true))(r)))
 		}
 	} else if *fastcgi == false && *insecure == true {
-		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(false))(r)))
+		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(false))(r)))
 	} else if *fastcgi == false && *insecure == false {
 		log.Println("info: https:// only")
 		// Change this CSRF auth token in production!
-		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect([]byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A=="), csrf.HttpOnly(true), csrf.Secure(true))(r)))
+		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(true))(r)))
 	}
 
 }
 
 // End main function
 
+func backwardsComp(){
+
+	// For backwards compatibility
+	if os.Getenv("CASGO_API_KEY") != "" && os.Getenv("COSGO_API_KEY") == "" {
+		os.Setenv("COSGO_API_KEY", os.Getenv("CASGO_API_KEY"))
+		log.Println("Please use COSGO_API_KEY instead of depreciated CASGO_API_KEY")
+	}
+	if os.Getenv("CASGO_DESTINATION") != "" && os.Getenv("COSGO_DESTINATION") == "" {
+		os.Setenv("COSGO_DESTINATION", os.Getenv("CASGO_DESTINATION"))
+		log.Println("Please use COSGO_DESTINATION instead of depreciated CASGO_DESTINATION")
+	}
+
+}
 // Hello functions
 func getKey() string {
 	return cosgoAPIKey
@@ -213,24 +254,24 @@ func QuickSelfTest() {
 	log.Println("Starting self test...")
 	mandrillKey = os.Getenv("MANDRILL_KEY")
 	if mandrillKey == "" {
-		log.Fatal("Fatal: MANDRILL_KEY is Crucial.\nHint: export MANDRILL_KEY=123456789")
+		log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
 		os.Exit(1)
 	}
 	cosgoDestination = os.Getenv("COSGO_DESTINATION")
 	if cosgoDestination == "" {
-		log.Fatal("Fatal: COSGO_DESTINATION is Crucial.\nHint: export COSGO_DESTINATION=\"your@email.com\"")
+		log.Fatal("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=\"your@email.com\"")
 		os.Exit(1)
 	}
 	_, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
-		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
+		log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
 	}
 
 	_, err = template.New("Contact").ParseFiles("./templates/form.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
-		log.Fatal("Hint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
+		log.Fatal("\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
 	}
 
 	_, err = template.New("Error").ParseFiles("./templates/error.html")
@@ -266,9 +307,14 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 // LoveHandler is just for fun.
 // I love lamp. This displays affection for r.URL.Path[1:]
 func LoveHandler(w http.ResponseWriter, r *http.Request) {
+
 	p := bluemonday.UGCPolicy()
 	subdomain := getSubdomain(r)
 	lol := p.Sanitize(r.URL.Path[1:])
+	if r.Method == "POST" {
+		log.Printf("Something tried POST on %s", lol)
+				http.Redirect(w, r, "/", 301)
+	}
 	if subdomain == "" {
 		fmt.Fprintf(w, "I love %s!", lol)
 		log.Printf("I love %s says %s at %s", lol, r.UserAgent(), r.RemoteAddr)
