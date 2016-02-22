@@ -13,7 +13,6 @@ when all you needed was a contact form, anyways.
 
 ```
 
-
 The MIT License (MIT)
 
 Copyright (c) 2016 aerth
@@ -28,14 +27,27 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 
 
-## Installation / Updating
+## Installation
 
-Please do this often. If you have recent templates (v0.4) only the binary need update. 
 ```
 go get -v -u github.com/aerth/casgo
 
 ```
+## Upgrading
+
+Open up script/upgrade in $EDITOR
+Modify to suit your needs
+Run often. Should be only one moment of downtime if using fastcgi..
+```
+$EDITOR script/*
+
+mv script/launch /usr/local/bin/cosgo-launch
+mv script/upgrade /usr/local/bin/cosgo-upgrade
+```
+
 ## Usage
+
+This is a sample launch script to get started. It doesn't send emails, but can be used to work on templates.
 
 ```shell
 cosgo -h
@@ -46,15 +58,16 @@ MANDRILL_KEY=134 COSGO_DESTINATION=1345 COSGO_API_KEY=contact cosgo -debug -inse
 ## Be sure to copy the templates and static folders to where your binary will exist.
 ##################
 ## Sample Cron
-This cron right here, it changes the form action= to whatever the key is. Every 15 minute. More minutes may be better, in case a visitor just stays on the page for a minute or two before sending the message.
+
 
 ```
 MANDRILL_KEY=yourK3YgoesH3R3
 COSGO_DESTINATION=your@email.com
-#CASGO_API_KEY=contact
-*/15 * * * * /usr/bin/pkill casgo;/demon/casgo/casgo -insecure -fastcgi -port 8080 > /dev/null 2>&1
-20 4 * * * /usr/bin/pkill casgo;/demon/casgo/casgo -insecure -fastcgi -port 8080 > /dev/null 2>&1
-@reboot /demon/casgo/casgo -insecure -fastcgi -port 8080 > /dev/null 2>&1
+#COSGO_API_KEY=contact
+COSGOPORT=8080
+*/30 * * * * /usr/bin/pkill -u $USER cosgo;/demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT > /dev/null 2>&1
+20 4 * * * /usr/bin/pkill -u $USER cosgo;/demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT > /dev/null 2>&1
+@reboot /demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT> /dev/null 2>&1
 
 ```
 
