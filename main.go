@@ -39,7 +39,7 @@ var (
 	mandrillKey      string
 	cosgoDestination string
 	cosgoAPIKey      string
-	CSRFKey						[]byte
+	CSRFKey					[]byte
 )
 
 type C struct {
@@ -113,15 +113,24 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
-	//If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
+	// If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
  	backwardsComp()
+
+	// Define CSRFKey with env var, or set default.
+	if os.Getenv("COSGO_CSRF_KEY") == "" {
+		log.Println("You can now set CONGO_CSRF_KEY environmental variable. Using default.")
+		CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
+	} else {
+		log.Println("CSRF key OK", os.Getenv("COSGO_CSRF_KEY"))
+		CSRFKey = []byte(os.Getenv("COSGO_CSRF_KEY"))
+	}
 
 	// Test environmental variables, if we aren't in -mailbox mode.
 	if *mailbox != true {
 		QuickSelfTest()
 	}
 
-	//Print API Key
+	// Print API Key
 	if os.Getenv("COSGO_API_KEY") == "" {
 		log.Println("Generating Random API Key...")
 		// The length of the API key can be modified here.
@@ -134,11 +143,6 @@ func main() {
 		log.Println("COSGO_API_KEY:", getKey())
 	}
 
-	if os.Getenv("COSGO_CSRF_KEY") == "" {
-	CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
-	} else {
-		CSRFKey = []byte(os.Getenv("COSGO_CSRF_KEY"))
-	}
 
 	//Begin Routing
 	r := mux.NewRouter()
@@ -157,7 +161,7 @@ func main() {
 		r.HandleFunc("/", CustomErrorHandler)
 	}
 
-	//Magic
+	//The Magic
 	r.HandleFunc("/"+cosgoAPIKey+"/form", HomeHandler)
 	r.HandleFunc("/"+cosgoAPIKey+"/form/", HomeHandler)
 	r.HandleFunc("/"+cosgoAPIKey+"/send", EmailHandler)
@@ -290,8 +294,9 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		// Do Something
+		log.Println("Almost fatal: Cant load index.html template!")
 		log.Println(err)
-		fmt.Fprintf(w, "Error. Please come back soon!")
+		fmt.Fprintf(w, "We are experiencing some technical difficulties. Please come back soon!")
 	} else {
 		data := map[string]interface{}{
 			"Key":            getKey(),
@@ -350,6 +355,7 @@ func CustomErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 // ContactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("api: %s - %s at %s", r.Host, r.UserAgent(), r.RemoteAddr)
 	t, err := template.New("Contact").ParseFiles("./templates/form.html")
 	if err == nil {
 		// Allow form in error page
@@ -360,9 +366,8 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		t.ExecuteTemplate(w, "Contact", data)
-		log.Printf("api: %s at %s", r.UserAgent(), r.RemoteAddr)
 	} else {
-		log.Println("template error")
+		log.Printf("api template error: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Println(err)
 		http.Redirect(w, r, "/", 301)
 	}
@@ -405,13 +410,12 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	err := emailx.Validate(form.Email)
 	if err != nil {
 		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
-		if err == emailx.ErrInvalidFormat {
-			fmt.Fprintln(rw, "<html><p>Email is not valid format. Would you like to go <a href=\"/\">back</a>?</p></html>")
+
+	if err == emailx.ErrInvalidFormat {
+			fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
 		}
-
-		if err == emailx.ErrUnresolvableHost {
-			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider. Would you like to go <a href=\"/\">back</a>?</p></html>")
-
+	if err == emailx.ErrUnresolvableHost {
+			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
 		}
 	}
 	//Normalize email address
@@ -429,6 +433,7 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	} else {
 		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Printf("Debug: %s to mandrill %s", form, destination)
+		log.Printf("Debug: %s to mandrill %s", form.Message, destination)
 
 		t, err := template.New("Error").ParseFiles("./templates/error.html")
 		if err == nil {
