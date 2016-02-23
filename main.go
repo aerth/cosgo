@@ -14,6 +14,7 @@ https://github.com/aerth/cosgo
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/dchest/captcha"
@@ -31,15 +32,15 @@ import (
 	"os"
 	"strings"
 	"time"
-	"errors"
 )
 
 var (
-//	mandrillApiUrl   string
+	//	mandrillApiUrl   string
 	mandrillKey      string
 	cosgoDestination string
 	cosgoAPIKey      string
-	CSRFKey					[]byte
+	CSRFKey          []byte
+	Mail             *log.Logger
 )
 
 type C struct {
@@ -58,6 +59,7 @@ const (
 	StdWidth  = 240
 	StdHeight = 120
 )
+
 //usage shows how available flags.
 func usage() {
 	fmt.Println("\nusage: cosgo [flags]")
@@ -67,37 +69,36 @@ func usage() {
 	time.Sleep(1000 * time.Millisecond)
 	fmt.Println("\nExample: cosgo -insecure -port 8080 -fastcgi -debug")
 }
+
 var (
 	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
 )
 var (
-    // ErrNoReferer is returned when a HTTPS request provides an empty Referer
-    // header.
-    ErrNoReferer = errors.New("referer not supplied")
-    // ErrBadReferer is returned when the scheme & host in the URL do not match
-    // the supplied Referer header.
-    ErrBadReferer = errors.New("referer invalid")
-    // ErrNoToken is returned if no CSRF token is supplied in the request.
-    ErrNoToken = errors.New("CSRF token not found in request")
-    // ErrBadToken is returned if the CSRF token in the request does not match
-    // the token in the session, or is otherwise malformed.
-    ErrBadToken = errors.New("CSRF token invalid, yo")
+	// ErrNoReferer is returned when a HTTPS request provides an empty Referer
+	// header.
+	ErrNoReferer = errors.New("referer not supplied")
+	// ErrBadReferer is returned when the scheme & host in the URL do not match
+	// the supplied Referer header.
+	ErrBadReferer = errors.New("referer invalid")
+	// ErrNoToken is returned if no CSRF token is supplied in the request.
+	ErrNoToken = errors.New("CSRF token not found in request")
+	// ErrBadToken is returned if the CSRF token in the request does not match
+	// the token in the session, or is otherwise malformed.
+	ErrBadToken = errors.New("CSRF token invalid, yo")
 )
 var (
-	port = flag.String("port", "8080", "HTTP Port to listen on")
-	Debug = flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
-	api = flag.Bool("api", false, "Show error.html for /")
-	insecure = flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
-	mailbox = flag.Bool("mailbox", false, "disable mandrill send")
-	fastcgi = flag.Bool("fastcgi", false, "use fastcgi with nginx")
-	static = flag.Bool("static", true, "use -static=false to disable")
+	port       = flag.String("port", "8080", "HTTP Port to listen on")
+	Debug      = flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
+	api        = flag.Bool("api", false, "Show error.html for /")
+	insecure   = flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
+	mailbox    = flag.Bool("mailbox", false, "disable mandrill send")
+	fastcgi    = flag.Bool("fastcgi", false, "use fastcgi with nginx")
+	static     = flag.Bool("static", true, "use -static=false to disable")
 	noredirect = flag.Bool("noredirect", false, "enable error.html template")
-	love = flag.Bool("love", false, "show I love ___")
-	bind = flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
-	help = flag.Bool("help", false, "show usage help and quit")
+	love       = flag.Bool("love", false, "show I love ___")
+	bind       = flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
+	help       = flag.Bool("help", false, "show usage help and quit")
 )
-
-
 
 func main() {
 
@@ -114,7 +115,7 @@ func main() {
 		os.Exit(2)
 	}
 	// If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
- 	backwardsComp()
+	backwardsComp()
 
 	// Define CSRFKey with env var, or set default.
 	if os.Getenv("COSGO_CSRF_KEY") == "" {
@@ -126,9 +127,8 @@ func main() {
 	}
 
 	// Test environmental variables, if we aren't in -mailbox mode.
-	if *mailbox != true {
-		QuickSelfTest()
-	}
+
+	QuickSelfTest(*mailbox)
 
 	// Print API Key
 	if os.Getenv("COSGO_API_KEY") == "" {
@@ -142,7 +142,6 @@ func main() {
 		// Print selected COSGO_API_KEY
 		log.Println("COSGO_API_KEY:", getKey())
 	}
-
 
 	//Begin Routing
 	r := mux.NewRouter()
@@ -195,6 +194,14 @@ func main() {
 
 	if *mailbox == true {
 		log.Println("mailbox mode: for testing only.")
+		f, err := os.OpenFile("./cosgo.mbox", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+		if err != nil {
+			log.Printf("error opening file: %v", err)
+			log.Fatal("Hint: touch ./cosgo.mbox, or chown/chmod it so that the cosgo process can access it.")
+			os.Exit(1)
+		}
+		Mail = log.New(f, "", 0)
+		//Mail.Println("TESTING WORKS")
 		//CreateMailBox()
 	}
 
@@ -230,7 +237,7 @@ func main() {
 
 // End main function
 
-func backwardsComp(){
+func backwardsComp() {
 
 	// For backwards compatibility
 	if os.Getenv("CASGO_API_KEY") != "" && os.Getenv("COSGO_API_KEY") == "" {
@@ -243,6 +250,7 @@ func backwardsComp(){
 	}
 
 }
+
 // Hello functions
 func getKey() string {
 	return cosgoAPIKey
@@ -254,12 +262,15 @@ func getMandrillKey() string {
 	return mandrillKey
 }
 
-func QuickSelfTest() {
+func QuickSelfTest(mailbox bool) {
 	log.Println("Starting self test...")
-	mandrillKey = os.Getenv("MANDRILL_KEY")
-	if mandrillKey == "" {
-		log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
-		os.Exit(1)
+
+	if mailbox != true {
+		mandrillKey = os.Getenv("MANDRILL_KEY")
+		if mandrillKey == "" {
+			log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
+			os.Exit(1)
+		}
 	}
 	cosgoDestination = os.Getenv("COSGO_DESTINATION")
 	if cosgoDestination == "" {
@@ -318,7 +329,7 @@ func LoveHandler(w http.ResponseWriter, r *http.Request) {
 	lol := p.Sanitize(r.URL.Path[1:])
 	if r.Method == "POST" {
 		log.Printf("Something tried POST on %s", lol)
-				http.Redirect(w, r, "/", 301)
+		http.Redirect(w, r, "/", 301)
 	}
 	if subdomain == "" {
 		fmt.Fprintf(w, "I love %s!", lol)
@@ -395,12 +406,35 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 		} else {
 			r.ParseForm()
 			query = r.Form
-			EmailSender(rw, r, destination, query)
+			if *mailbox == true {
+				EmailSaver(rw, r, destination, query)
+				fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+			} else {
+				EmailSender(rw, r, destination, query)
+			}
 		}
 	} else {
 		http.Redirect(rw, r, "/", 301)
 	}
 
+}
+
+// EmailSender always returns success for the visitor. This function needs some work.
+func EmailSaver(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+	form := ParseQuery(query)
+	t := time.Now()
+	mailtime := t.Format("Mon Jan 2 15:04:05 2006")
+	mailtime2 := t.Format("Mon, 2 Jan 2006 15:04:05 -0700")
+	Mail.Println("From " + form.Email + " " + mailtime)
+	Mail.Println("Return-path: <" + form.Email + ">")
+	Mail.Println("Envelope-to: " + destination)
+	Mail.Println("Delivery-date: " + mailtime2)
+	Mail.Println("To: " + destination)
+	Mail.Println("Subject: " + form.Subject)
+	Mail.Println("From: " + form.Email)
+	Mail.Println("Date: " + mailtime2)
+
+	Mail.Println("\n" + form.Message + "\n\n")
 }
 
 // EmailSender always returns success for the visitor. This function needs some work.
@@ -411,10 +445,10 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 	if err != nil {
 		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
 
-	if err == emailx.ErrInvalidFormat {
+		if err == emailx.ErrInvalidFormat {
 			fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
 		}
-	if err == emailx.ErrUnresolvableHost {
+		if err == emailx.ErrUnresolvableHost {
 			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
 		}
 	}
