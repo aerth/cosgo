@@ -26,12 +26,28 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 
 
-## Installation
+## Installation 
 
 ```
+
 go get -v -u github.com/aerth/cosgo
+cd $GOPATH/src/github.com/aerth/cosgo
+COSGO_DESTINATION="test@localhost" ./cosgo -debug -mailbox &
+firefox http://127.0.0.1:8080
+step 4.. ?
+step 5.. PROFIT!
 
 ```
+
+## Theme
+
+Customize the theme by modifying ./templates/index.html and ./templates/error.html
+
+Upload your static .css .js .png .jpeg files in ./static, they will be available like any normal server.
+
+Upload to github and link from wiki!
+
+
 ## Upgrading
 
 Open up script/upgrade in $EDITOR
