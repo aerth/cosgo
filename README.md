@@ -2,11 +2,10 @@
 when all you needed was a contact form, anyways.
 
 
-* Contact form sends mail with mandrill for free.
+* Contact form saves messages to a local mbox file, or sends mail with mandrill for free.
 * Uses `templates/index.html` and `templates/error.html` while serving `static/` files
-* Enjoy Cosgo. Ongoing testing on NetBSD and Debian servers. 
-* You can use Cosgo itself to contact the author. https://isupon.us
-* Work in progress. Upgrade often.
+* Tested on NetBSD and Debian servers.
+* Try Cosgo right now. https://isupon.us
 
 [![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
 
