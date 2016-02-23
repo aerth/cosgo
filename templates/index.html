@@ -36,11 +36,6 @@
       You are using a text-based browser. The audio captcha will not play here.
       <a href="/captcha/download/{{.CaptchaId}}.wav">Download file</a> to play it in the external player.
     </audio>
-    <select id="lang" onchange="changeLang()">
-    	<option value="en">English</option>
-    	<option value="ru">Russian</option>
-    	<option value="zh">Chinese</option>
-    </select>
     <input type=hidden name=captchaId value="{{.CaptchaId}}"><br>
     <input name=captchaSolution placeholder="Enter the code to proceed">
 

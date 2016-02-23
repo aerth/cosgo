@@ -30,7 +30,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ## Installation
 
 ```
-go get -v -u github.com/aerth/casgo
+go get -v -u github.com/aerth/cosgo
 
 ```
 ## Upgrading
@@ -84,7 +84,7 @@ server {
 
         }
         location /contact/form/send {
-        proxy_pass http://127.0.0.1:8080; # Change using "casgo -port XXX"
+        proxy_pass http://127.0.0.1:8080; # Change using "cosgo -port XXX"
         }
 }
 
