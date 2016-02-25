@@ -7,7 +7,7 @@ when all you needed was a contact form, anyways.
 * Tested on NetBSD and Debian servers.
 * Try Cosgo right now. https://isupon.us
 
-[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
+[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo) [![Coverage Status](https://coveralls.io/repos/github/aerth/cosgo/badge.svg?branch=master)](https://coveralls.io/github/aerth/cosgo?branch=master)
 
 
 ```
