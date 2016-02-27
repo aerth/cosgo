@@ -1,4 +1,4 @@
-## cosgo 
+## cosgo
 when all you needed was a contact form, anyways.
 
 
@@ -24,9 +24,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ```
 
-
-
-## Installation 
+## Installation
 
 ```
 
@@ -43,7 +41,7 @@ step 5.. PROFIT!
 
 Customize the theme by modifying ./templates/index.html and ./templates/error.html
 
-Upload your static .css .js .png .jpeg files in ./static, they will be available like any normal server.
+Upload your static .css .js .png .jpeg .woff and .tff files in ./static/, they will be available like any normal server.
 
 Upload to github and link from wiki!
 
@@ -121,7 +119,7 @@ server {
 }
 
 ```
-More code examples at https://github.com/aerth/cosgo/wiki 
+More code examples at https://github.com/aerth/cosgo/wiki
 Add your use case
 
 # Historical Information

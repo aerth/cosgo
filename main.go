@@ -178,6 +178,9 @@ func main() {
 		r.Methods("GET").Path("/static/{dir}/{whatever}.png").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.jpg").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.jpeg").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.woff").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.ttf").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.txt").Handler(s)
 		// More static options soon.
 	}
 
