@@ -274,12 +274,24 @@ func QuickSelfTest(mailbox bool) {
 			log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
 			os.Exit(1)
 		}
-	}
+
+		cosgoDestination = os.Getenv("COSGO_DESTINATION")
+		if cosgoDestination == "" {
+			log.Fatal("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=\"your@email.com\"")
+			os.Exit(1)
+		}
+
+	}else{
+
 	cosgoDestination = os.Getenv("COSGO_DESTINATION")
 	if cosgoDestination == "" {
-		log.Fatal("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=\"your@email.com\"")
-		os.Exit(1)
+		log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
+		log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
+		cosgoDestination = "cosgo@localhost"
+
 	}
+}
+
 	_, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
