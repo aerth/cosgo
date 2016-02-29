@@ -119,7 +119,7 @@ func main() {
 
 	// Define CSRFKey with env var, or set default.
 	if os.Getenv("COSGO_CSRF_KEY") == "" {
-		log.Println("You can now set CONGO_CSRF_KEY environmental variable. Using default.")
+		log.Println("You can now set COSGO_CSRF_KEY environmental variable. Using default.")
 		CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	} else {
 		log.Println("CSRF key OK", os.Getenv("COSGO_CSRF_KEY"))
