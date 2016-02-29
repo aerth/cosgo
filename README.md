@@ -7,7 +7,7 @@ when all you needed was a contact form, anyways.
 * Tested on NetBSD and Debian servers.
 * Try Cosgo right now. https://isupon.us
 
-[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo) 
+[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
 
 
 ```
@@ -25,6 +25,20 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ```
 
 ## Installation
+
+Using config file (new)
+
+```
+go get -v -u github.com/aerth/cosgo
+cd $GOPATH/src/github.com/aerth/cosgo
+COSGO_DESTINATION="test@localhost" ./cosgo -debug -mailbox -config
+# Fill out the form. CSRF Key must be 32 bits.
+COSGO_DESTINATION="test@localhost" ./cosgo -debug -mailbox -config &
+firefox http://127.0.0.1:8080
+step 4.. ?
+step 5.. PROFIT!
+
+```
 
 ```
 

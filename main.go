@@ -17,12 +17,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/aerth/seconf"
 	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/goware/emailx"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/aerth/seconf"
 	"html/template"
 	"log"
 	"math/rand"
@@ -99,7 +99,7 @@ var (
 	love       = flag.Bool("love", false, "show I love ___")
 	bind       = flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
 	help       = flag.Bool("help", false, "show usage help and quit")
-	config       = flag.Bool("config", false, "use config file at ~/.cosgo")
+	config     = flag.Bool("config", false, "use config file at ~/.cosgo")
 )
 
 func main() {
@@ -125,35 +125,34 @@ func main() {
 
 	// Define CSRFKey with env var, or set default.
 
-if !*config {
-	if os.Getenv("COSGO_CSRF_KEY") == "" && string(CSRFKey) == "" {
-		log.Println("You can now set COSGO_CSRF_KEY environmental variable. Using default.")
-		CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
-	} else {
-		log.Println("CSRF key OK", os.Getenv("COSGO_CSRF_KEY"))
-		CSRFKey = []byte(os.Getenv("COSGO_CSRF_KEY"))
+	if !*config {
+		if os.Getenv("COSGO_CSRF_KEY") == "" && string(CSRFKey) == "" {
+			log.Println("You can now set COSGO_CSRF_KEY environmental variable. Using default.")
+			CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
+		} else {
+			log.Println("CSRF key OK", os.Getenv("COSGO_CSRF_KEY"))
+			CSRFKey = []byte(os.Getenv("COSGO_CSRF_KEY"))
+		}
 	}
-}
 	// Test environmental variables, if we aren't in -mailbox mode.
 
 	QuickSelfTest(*mailbox)
 
-
 	if !*config {
 
-	// Print API Key
-	if os.Getenv("COSGO_API_KEY") == "" {
-		log.Println("Generating Random API Key...")
-		// The length of the API key can be modified here.
-		cosgoAPIKey = GenerateAPIKey(20)
-		// Print new GenerateAPIKey
-		log.Println("COSGO_API_KEY:", getKey())
-	} else {
-		cosgoAPIKey = os.Getenv("COSGO_API_KEY")
-		// Print selected COSGO_API_KEY
-		log.Println("COSGO_API_KEY:", getKey())
+		// Print API Key
+		if os.Getenv("COSGO_API_KEY") == "" {
+			log.Println("Generating Random API Key...")
+			// The length of the API key can be modified here.
+			cosgoAPIKey = GenerateAPIKey(20)
+			// Print new GenerateAPIKey
+			log.Println("COSGO_API_KEY:", getKey())
+		} else {
+			cosgoAPIKey = os.Getenv("COSGO_API_KEY")
+			// Print selected COSGO_API_KEY
+			log.Println("COSGO_API_KEY:", getKey())
+		}
 	}
-}
 	//Begin Routing
 	r := mux.NewRouter()
 
@@ -281,31 +280,30 @@ func QuickSelfTest(mailbox bool) {
 
 	if !*config {
 
-	if mailbox != true {
-		mandrillKey = os.Getenv("MANDRILL_KEY")
-		if mandrillKey == "" {
-			log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
-			os.Exit(1)
-		}
+		if mailbox != true {
+			mandrillKey = os.Getenv("MANDRILL_KEY")
+			if mandrillKey == "" {
+				log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
+				os.Exit(1)
+			}
 
-		cosgoDestination = os.Getenv("COSGO_DESTINATION")
-		if cosgoDestination == "" {
-			log.Fatal("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=\"your@email.com\"")
-			os.Exit(1)
-		}
-
-	} else {
-
-
-		if cosgoDestination == "" {
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
-			log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
-			log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
-			cosgoDestination = "cosgo@localhost"
+			if cosgoDestination == "" {
+				log.Fatal("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=\"your@email.com\"")
+				os.Exit(1)
+			}
 
+		} else {
+
+			if cosgoDestination == "" {
+				cosgoDestination = os.Getenv("COSGO_DESTINATION")
+				log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
+				log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
+				cosgoDestination = "cosgo@localhost"
+
+			}
 		}
 	}
-}
 	_, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
@@ -616,33 +614,31 @@ func getLink(fastcgi bool, bind string, port string) string {
 	}
 }
 
-
 func DoConfig() {
-if !seconf.Detect("cosgo") {
-	seconf.Create("cosgo", "cosgo config", "COSGO_CSRF_KEY", "COSGO_API_KEY", "COSGO_DESTINATION", "MANDRILL_KEY")
-}
+	if !seconf.Detect("cosgo") {
+		seconf.Create("cosgo", "cosgo config", "COSGO_CSRF_KEY", "COSGO_API_KEY", "COSGO_DESTINATION", "MANDRILL_KEY")
+	}
 
-configdecoded, err := seconf.Read("cosgo")
-		if err != nil {
-			fmt.Println("error:")
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		configarray := strings.Split(configdecoded, "::::")
-		if len(configarray) < 2 {
-			fmt.Println("Broken config file. Create a new one.")
-			os.Exit(1)
-		}
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		CSRFKey = []byte(configarray[0])
-		cosgoAPIKey = configarray[1]
-		cosgoDestination = configarray[2]
-		mandrillKey = configarray[3]
+	configdecoded, err := seconf.Read("cosgo")
+	if err != nil {
+		fmt.Println("error:")
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	configarray := strings.Split(configdecoded, "::::")
+	if len(configarray) < 2 {
+		fmt.Println("Broken config file. Create a new one.")
+		os.Exit(1)
+	}
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	CSRFKey = []byte(configarray[0])
+	cosgoAPIKey = configarray[1]
+	cosgoDestination = configarray[2]
+	mandrillKey = configarray[3]
 
-		fmt.Println("cosgoDestination "+cosgoDestination)
-
+	fmt.Println("cosgoDestination " + cosgoDestination)
 
 }
