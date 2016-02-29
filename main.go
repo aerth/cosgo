@@ -281,16 +281,16 @@ func QuickSelfTest(mailbox bool) {
 			os.Exit(1)
 		}
 
-	}else{
+	} else {
 
-	cosgoDestination = os.Getenv("COSGO_DESTINATION")
-	if cosgoDestination == "" {
-		log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
-		log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
-		cosgoDestination = "cosgo@localhost"
+		cosgoDestination = os.Getenv("COSGO_DESTINATION")
+		if cosgoDestination == "" {
+			log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
+			log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
+			cosgoDestination = "cosgo@localhost"
 
+		}
 	}
-}
 
 	_, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
