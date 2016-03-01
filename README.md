@@ -29,25 +29,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 Using config file (new)
 
 ```
+export GOPATH=/tmp/cosgo
 go get -v -u github.com/aerth/cosgo
 cd $GOPATH/src/github.com/aerth/cosgo
-COSGO_DESTINATION="test@localhost" ./cosgo -debug -mailbox -config
-# Fill out the form. CSRF Key must be 32 bits.
-COSGO_DESTINATION="test@localhost" ./cosgo -debug -mailbox -config &
-firefox http://127.0.0.1:8080
-step 4.. ?
-step 5.. PROFIT!
+go build
+./cosgo -h
+./cosgo -config # Creates the config
+./cosgo -config -debug &
+firefox http://127.0.0.1:8080 # Check it out.
 
-```
-
-```
-
-go get -v -u github.com/aerth/cosgo
-cd $GOPATH/src/github.com/aerth/cosgo
-COSGO_DESTINATION="test@localhost" ./cosgo -debug -mailbox &
-firefox http://127.0.0.1:8080
-step 4.. ?
-step 5.. PROFIT!
+Should return error, because we don't accept POST without the CSRF token:
+curl --data /tmp/cosgo.gif http://127.0.0.1:8080/upload
 
 ```
 
@@ -55,16 +47,24 @@ step 5.. PROFIT!
 
 Customize the theme by modifying ./templates/index.html and ./templates/error.html
 
-Upload your static .css .js .png .jpeg .woff and .tff files in ./static/, they will be available like any normal server.
+Included is the bare minimal.
 
-Upload to github and link from wiki!
+Upload your static .css .js .png .jpeg .woff and .tff files in ./static/ like /static/{foldername}/whatever.css, they will be available like any normal server.
+
+Modify your theme if it looks in /assets/.
+
+cp favicon into static too. it well be served at /favicon.ico
+cp robot.txt into static too. it well be served at /robots.txt
+
+Make sure your template starts with `{{define "Index"}}`
+Make sure your template ends with `{{end}}`
 
 
 ## Upgrading
 
 Open up script/upgrade in $EDITOR
 Modify to suit your needs
-Run often. Should be only one moment of downtime if using fastcgi..
+
 ```
 $EDITOR script/*
 
@@ -72,14 +72,10 @@ mv script/launch /usr/local/bin/cosgo-launch
 mv script/upgrade /usr/local/bin/cosgo-upgrade
 ```
 
-## Usage
+## Cron
 
-This is a sample launch script to get started. It doesn't send emails, but can be used to work on templates.
 
 ```shell
-cosgo -h
-MANDRILL_KEY=134 COSGO_DESTINATION=1345 COSGO_API_KEY=contact cosgo -debug -insecure -mailbox
-```
 
 ###################
 ## Be sure to copy the templates and static folders to where your binary will exist.
@@ -88,7 +84,7 @@ MANDRILL_KEY=134 COSGO_DESTINATION=1345 COSGO_API_KEY=contact cosgo -debug -inse
 
 
 ```
-MANDRILL_KEY=yourK3YgoesH3R3
+#MANDRILL_KEY=yourK3YgoesH3R3 Not using mandrill anymore, but option exists.
 COSGO_DESTINATION=your@email.com
 #COSGO_API_KEY=contact
 COSGOPORT=8080
@@ -110,9 +106,7 @@ server {
         proxy_pass http://127.0.0.1:8081; # Change to your static site's port
 
         }
-        location /contact/form/send {
-        proxy_pass http://127.0.0.1:8080; # Change using "cosgo -port XXX"
-        }
+
 }
 
 ```
@@ -134,7 +128,7 @@ server {
 
 ```
 More code examples at https://github.com/aerth/cosgo/wiki
-Add your use case
+Please add your use case. It could make cosgo better.
 
 # Historical Information
 
