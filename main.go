@@ -92,7 +92,7 @@ var (
 	Debug      = flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
 	api        = flag.Bool("api", false, "Show error.html for /")
 	insecure   = flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
-	mailbox    = flag.Bool("mailbox", false, "disable mandrill send")
+	mailbox    = flag.Bool("mailbox", true, "disable mandrill send")
 	fastcgi    = flag.Bool("fastcgi", false, "use fastcgi with nginx")
 	static     = flag.Bool("static", true, "use -static=false to disable")
 	noredirect = flag.Bool("noredirect", false, "enable error.html template")
@@ -206,7 +206,7 @@ func main() {
 	//End Routing
 
 	if *mailbox == true {
-		log.Println("mailbox mode: for testing only.")
+		log.Println("mailbox mode.")
 		f, err := os.OpenFile("./cosgo.mbox", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			log.Printf("error opening file: %v", err)
@@ -214,8 +214,7 @@ func main() {
 			os.Exit(1)
 		}
 		Mail = log.New(f, "", 0)
-		//Mail.Println("TESTING WORKS")
-		//CreateMailBox()
+
 	}
 
 	if *Debug == false {
@@ -429,14 +428,17 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
 			fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
+			log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 			http.Redirect(rw, r, "/", 301)
 		} else {
 			r.ParseForm()
 			query = r.Form
 			if *mailbox == true {
 				EmailSaver(rw, r, destination, query)
+				log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 				fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
 			} else {
+				// Phasing Mandrill out
 				EmailSender(rw, r, destination, query)
 			}
 		}
@@ -462,6 +464,7 @@ func EmailSaver(rw http.ResponseWriter, r *http.Request, destination string, que
 	Mail.Println("Date: " + mailtime2)
 
 	Mail.Println("\n" + form.Message + "\n\n")
+
 }
 
 // EmailSender always returns success for the visitor. This function needs some work.
