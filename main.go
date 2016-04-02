@@ -113,6 +113,7 @@ var (
 	ErrBadToken = errors.New("CSRF token invalid, yo")
 )
 var (
+	// TODO: dont use flags
 	help       = flag.Bool("help", false, "Show usage help and quit")
 	port       = flag.String("port", "8080", "Port to listen on")
 	bind       = flag.String("bind", "127.0.0.1", "Default: 127.0.0.1, try 0.0.0.0")
@@ -128,11 +129,21 @@ var (
 	custom     = flag.String("custom", "cosgo", "Use config file at ~/.cosgo")
 )
 
+var logo = `
+                           _
+  ___ ___  ___  __ _  ___ | |
+ / __/ _ \/ __|/ _  |/ _ \| |
+| (_| (_) \__ \ (_| | (_) |_|
+ \___\___/|___/\__, |\___/(_)
+               |___/
+`
+
 func main() {
 
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// You should recieve a copy of the MIT license with this software.
-	log.Println("\n\n\tcosgo v0.4\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo")
+	fmt.Println(logo)
+	fmt.Println("\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and local mbox ability.\n")
 	// Set flags from command line
 	//flag.Usage = usage
 	flag.Parse()
@@ -149,14 +160,16 @@ func main() {
 
 	// Load Configuration from seconf/secenv
 	if *config == true {
-		DoConfig()
+		if !LoadConfig() {
+			fmt.Println("Fatal: Can't load configuration file.")
+			os.Exit(1)
+		}
 	}
 
 	// If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
 	backwardsComp()
 
 	// Define CSRFKey with env var, or set default.
-
 	if !*config {
 		if os.Getenv("COSGO_CSRF_KEY") == "" && string(CSRFKey) == "" {
 			//	log.Println("You can now set COSGO_CSRF_KEY environmental variable. Using default.")
@@ -168,17 +181,17 @@ func main() {
 	}
 	// Test environmental variables, if we aren't in -mailbox mode.
 
-	QuickSelfTest(*mailbox)
+	QuickSelfTest()
 
 	if !*config {
 
 		// Print API Key
 		if os.Getenv("COSGO_API_KEY") == "" {
-			log.Println("Generating Random API Key...")
+			log.Println("Boot: Generating Random POST Key...")
 			// The length of the API key can be modified here.
 			cosgoAPIKey = GenerateAPIKey(20)
 			// Print new GenerateAPIKey
-			log.Println("COSGO_API_KEY:", getKey())
+			log.Println("Info: COSGO_API_KEY=", getKey())
 		} else {
 			cosgoAPIKey = os.Getenv("COSGO_API_KEY")
 			// Print selected COSGO_API_KEY
@@ -245,7 +258,8 @@ func main() {
 	//End Routing
 
 	if *mailbox == true {
-		log.Println("mailbox mode.")
+		log.Println("Mode: mailbox")
+		log.Println("Hint: read mail with mutt -Rf cosgo.mbox")
 		f, err := os.OpenFile("./cosgo.mbox", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			log.Printf("error opening file: %v", err)
@@ -257,13 +271,15 @@ func main() {
 	}
 
 	if *debug == false {
+		log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
 		log.Println("[switching logs to cosgo.log]")
+
 		OpenLogFile()
 	} else {
-		log.Println("[debug on: not using cosgo.log]")
+		log.Println("[debug on: logs to stdout]")
 	}
 
-	log.Printf("cosgo is live on " + getLink(*fastcgi, *bind, *port))
+	log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
 	// Start Serving!
 	if *fastcgi == true {
 		listener, err := net.Listen("tcp", *bind+":"+*port)
@@ -313,13 +329,10 @@ func getMandrillKey() string {
 	return mandrillKey
 }
 
-func QuickSelfTest(mailbox bool) {
+func QuickSelfTest() {
 	log.Println("Starting self test...")
-
 	if !*config {
-
-		if mailbox != true {
-
+		if *mailbox != true {
 			switch smtpstyle {
 			case "mandrill":
 				mandrillKey = os.Getenv("MANDRILL_KEY")
@@ -334,7 +347,7 @@ func QuickSelfTest(mailbox bool) {
 					os.Exit(1)
 				}
 			default:
-				mailbox = true
+				*mailbox = true
 			}
 
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
@@ -347,7 +360,7 @@ func QuickSelfTest(mailbox bool) {
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
 			if cosgoDestination == "" {
 
-				log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
+				log.Println("Info: COSGO_DESTINATION not set. Using user@example.com")
 				log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
 			}
 		}
@@ -719,7 +732,7 @@ func getLink(fastcgi bool, bind string, port string) string {
 	}
 }
 
-func DoConfig() {
+func LoadConfig() bool {
 	if !seconf.Detect("cosgo") {
 		seconf.Create("cosgo",
 			"cosgo config generator",
@@ -735,16 +748,16 @@ func DoConfig() {
 	if err != nil {
 		fmt.Println("error:")
 		fmt.Println(err)
-		os.Exit(1)
+		return false
 	}
 	configarray := strings.Split(configdecoded, "::::")
 	if len(configarray) < 2 {
 		fmt.Println("Broken config file. Create a new one.")
-		os.Exit(1)
+		return false
 	}
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return false
 	}
 	CSRFKey = []byte(configarray[0])
 	cosgoAPIKey = configarray[1]
@@ -774,6 +787,6 @@ func DoConfig() {
 		log.Println("Saving mail (cosgo.mbox) addressed to " + cosgoDestination)
 	} else {
 		log.Println("Sending via mandrill to " + cosgoDestination)
-
 	}
+	return true
 }
