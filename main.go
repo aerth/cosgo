@@ -67,6 +67,7 @@ var (
 	cosgoKey         string
 	CSRFKey          []byte
 	Mail             *log.Logger
+	cosgoRefresh     = 42 * time.Second // Will change in a few commits.
 )
 
 type C struct {
@@ -206,31 +207,22 @@ func main() {
 	// Test environmental variables, if we aren't in -mailbox mode.
 	QuickSelfTest()
 
-	// Not using seconf.
-	if !*config {
-
-		// Print API Key
-		if os.Getenv("COSGO_API_KEY") == "" {
-
-			// The length of the API key can be modified here.
-			go func() {
-				for {
-					log.Println("Boot: Generating Random POST Key...")
-					cosgoKey = GenerateAPIKey(20)
-					time.Sleep(42 * time.Second)
-				}
-			}()
-
-			cosgoKey = GenerateAPIKey(20)
-
-			// Print new GenerateAPIKey
-			log.Println("Info: COSGO_API_KEY=" + getKey())
-		} else {
-			cosgoKey = os.Getenv("COSGO_API_KEY")
-			// Print selected COSGO_API_KEY
-			log.Println("COSGO_API_KEY:", getKey())
-		}
+	if os.Getenv("COSGO_API_KEY") == "" {
+		// The length of the API key can be modified here.
+		// Internal cron!!!
+		go func() {
+			for {
+				log.Println("Boot: Generating Random POST Key...")
+				cosgoKey = GenerateAPIKey(20)
+				time.Sleep(cosgoRefresh)
+			}
+		}()
+	} else {
+		cosgoKey = os.Getenv("COSGO_API_KEY")
+		// Print selected COSGO_API_KEY
+		log.Println("COSGO_API_KEY:", getKey())
 	}
+
 	//Begin Routing
 	r := mux.NewRouter()
 
@@ -285,7 +277,7 @@ func main() {
 	//End Routing
 
 	// Start Runtime Info
-	fmt.Println("\n")
+	fmt.Println("")
 	if *secure == false {
 		log.Println("Warning: Running in *insecure* mode.")
 		log.Println("Hint: Use -secure flag for https only.")
@@ -313,25 +305,40 @@ func main() {
 
 	log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
 	// Start Serving!
-	if *fastcgi == true {
-		listener, err := net.Listen("tcp", *bind+":"+*port)
-		if err != nil {
-			log.Fatal("Could not bind: ", err)
-		}
-		if *secure == false {
-			log.Fatal(fcgi.Serve(listener, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(false))(r)))
-		} else {
+	for {
+		// TODO: switch if nonsense to switch case
+		if *fastcgi == true {
+			listener, err := net.Listen("tcp", *bind+":"+*port)
+			if err != nil {
+				log.Fatal("Could not bind: ", err)
+			}
+			if *secure == false {
+				log.Fatal(fcgi.Serve(listener,
+					csrf.Protect(CSRFKey,
+						csrf.HttpOnly(true),
+						csrf.Secure(false))(r)))
+			} else {
+				log.Println("info: https:// only")
+				log.Fatal(fcgi.Serve(listener,
+					csrf.Protect(CSRFKey,
+						csrf.HttpOnly(true),
+						csrf.Secure(true))(r)))
+			}
+		} else if *fastcgi == false && *secure == false {
+			log.Fatal(http.ListenAndServe(":"+*port,
+				csrf.Protect(CSRFKey,
+					csrf.HttpOnly(true),
+					csrf.Secure(false))(r)))
+		} else if *fastcgi == false && *secure == true {
 			log.Println("info: https:// only")
-			log.Fatal(fcgi.Serve(listener, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(true))(r)))
+			// Change this CSRF auth token in production!
+			log.Fatal(http.ListenAndServe(":"+*port,
+				csrf.Protect(CSRFKey,
+					csrf.HttpOnly(true),
+					csrf.Secure(true))(r)))
 		}
-	} else if *fastcgi == false && *secure == false {
-		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(false))(r)))
-	} else if *fastcgi == false && *secure == true {
-		log.Println("info: https:// only")
-		// Change this CSRF auth token in production!
-		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(true))(r)))
 	}
-
+	log.Fatal("cosgo is offline.")
 }
 
 // End main function
