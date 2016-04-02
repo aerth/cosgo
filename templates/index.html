@@ -1,6 +1,10 @@
 {{define "Index"}}
 <!DOCTYPE html>
 <html>
+<head>
+  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+</head>
 <form id="contact-form" action="/{{.Key}}/send" method="POST">
     <input type="text" name="email" placeholder="email" required/><br/>
     <input type="text" name="subject" placeholder="subject"/><br/>

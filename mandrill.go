@@ -2,20 +2,17 @@ package main
 
 import (
 	"bytes"
-	mandrill "github.com/keighl/mandrill"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	mandrill "github.com/keighl/mandrill"
 )
 
-type Form struct {
-	Name, Email, Subject, Message string
-}
-
-func canSendEmail() bool {
-	user_count_url := mandrillApiUrl + "users/info.json"
+func canMandrill() bool {
+	user_count_url := mandrillAPIUrl + "users/info.json"
 	var jsonStr = []byte(`
 	{
 	    "key": "` + mandrillKey + `"
@@ -42,8 +39,8 @@ func canSendEmail() bool {
 	return true
 }
 
-func sendEmail(destinationEmail string, form *Form) bool {
-	//if !canSendEmail() {
+func sendMandrill(destinationEmail string, form *Form) bool {
+	//if !canMandrill() {
 
 	//	return false
 	//}

@@ -1,5 +1,4 @@
 /*
-
                            _
   ___ ___  ___  __ _  ___ | |
  / __/ _ \/ __|/ _` |/ _ \| |
@@ -9,7 +8,31 @@
 
 https://github.com/aerth/cosgo
 
+Contact form server. Saves to local mailbox or uses Mandrill or Sendgrid SMTP API.
+
 */
+
+// The MIT License (MIT)
+//
+// Copyright (c) 2016 aerth
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 package main
 
@@ -17,12 +40,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/aerth/seconf"
-	"github.com/dchest/captcha"
-	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
-	"github.com/goware/emailx"
-	"github.com/microcosm-cc/bluemonday"
 	"html/template"
 	"log"
 	"math/rand"
@@ -33,11 +50,21 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/aerth/seconf"
+	"github.com/dchest/captcha"
+	"github.com/gorilla/csrf"
+	"github.com/gorilla/mux"
+	"github.com/goware/emailx"
+	"github.com/microcosm-cc/bluemonday"
 )
 
+var smtpstyle = os.Getenv("COSGO_MODE")
+
 var (
-	//	mandrillApiUrl   string
+	//	mandrillAPIUrl   string
 	mandrillKey      string
+	sendgridKey      string
 	cosgoDestination string
 	cosgoAPIKey      string
 	CSRFKey          []byte
@@ -49,16 +76,14 @@ type C struct {
 }
 
 const (
-	// Default number of digits in captcha solution.
-	DefaultLen = 4
-	// The number of captchas created that triggers garbage collection used
-	// by default store.
-	CollectNum = 100
-	// Expiration time of captchas used by default store.
-	Expiration = 10 * time.Minute
-	// Standard width and height of a captcha image.
-	StdWidth  = 240
-	StdHeight = 120
+	// Minimum Captcha Length
+	CaptchaLength = 3
+	// Captcha will add *up to* CaptchaVariation to the CaptchaLength
+	CaptchaVariation = 2
+	CollectNum       = 100
+	Expiration       = 10 * time.Minute
+	StdWidth         = 240
+	StdHeight        = 90
 )
 
 //usage shows how available flags.
@@ -72,7 +97,7 @@ func usage() {
 }
 
 var (
-	mandrillApiUrl = "https://mandrillapp.com/api/1.0/"
+	mandrillAPIUrl = "https://mandrillapp.com/api/1.0/"
 )
 var (
 	// ErrNoReferer is returned when a HTTPS request provides an empty Referer
@@ -88,18 +113,19 @@ var (
 	ErrBadToken = errors.New("CSRF token invalid, yo")
 )
 var (
-	port       = flag.String("port", "8080", "HTTP Port to listen on")
-	Debug      = flag.Bool("debug", false, "be verbose, dont switch to cosgo.log")
+	help       = flag.Bool("help", false, "Show usage help and quit")
+	port       = flag.String("port", "8080", "Port to listen on")
+	bind       = flag.String("bind", "127.0.0.1", "Default: 127.0.0.1, try 0.0.0.0")
+	debug      = flag.Bool("debug", false, "Send logs to stdout. Dont switch to cosgo.log")
 	api        = flag.Bool("api", false, "Show error.html for /")
-	insecure   = flag.Bool("insecure", false, "accept insecure cookie transfer (http/80)")
-	mailbox    = flag.Bool("mailbox", true, "disable mandrill send")
-	fastcgi    = flag.Bool("fastcgi", false, "use fastcgi with nginx")
-	static     = flag.Bool("static", true, "use -static=false to disable")
-	noredirect = flag.Bool("noredirect", false, "enable error.html template")
-	love       = flag.Bool("love", false, "show I love ___")
-	bind       = flag.String("bind", "127.0.0.1", "default: 127.0.0.1 - maybe 0.0.0.0 ?")
-	help       = flag.Bool("help", false, "show usage help and quit")
-	config     = flag.Bool("config", false, "use config file at ~/.cosgo")
+	insecure   = flag.Bool("insecure", false, "Accept insecure cookie transfer (http/80). Otherwise, you must use SSL.")
+	mailbox    = flag.Bool("mailbox", true, "Use local cosgo.mbox file. Disables SMTP and outgoing traffic.")
+	fastcgi    = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
+	static     = flag.Bool("static", true, "Serve /static/ files. Use -static=false to disable")
+	noredirect = flag.Bool("noredirect", false, "Default is to redirect all 404s back to /. Set true to enable error.html template")
+	love       = flag.Bool("love", false, "Fun. Show I love ___ instead of redirect")
+	config     = flag.Bool("config", false, "Use config file at ~/.cosgo")
+	custom     = flag.String("custom", "cosgo", "Use config file at ~/.cosgo")
 )
 
 func main() {
@@ -107,19 +133,25 @@ func main() {
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// You should recieve a copy of the MIT license with this software.
 	log.Println("\n\n\tcosgo v0.4\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo")
-
 	// Set flags from command line
-	flag.Usage = usage
+	//flag.Usage = usage
 	flag.Parse()
 	args := flag.Args()
 	if len(args) > 1 {
 		usage()
 		os.Exit(2)
 	}
+
+	// -custom="anything" sets -config=true
+	if *custom != "cosgo" {
+		*config = true
+	}
+
+	// Load Configuration from seconf/secenv
 	if *config == true {
 		DoConfig()
-
 	}
+
 	// If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
 	backwardsComp()
 
@@ -127,7 +159,7 @@ func main() {
 
 	if !*config {
 		if os.Getenv("COSGO_CSRF_KEY") == "" && string(CSRFKey) == "" {
-		//	log.Println("You can now set COSGO_CSRF_KEY environmental variable. Using default.")
+			//	log.Println("You can now set COSGO_CSRF_KEY environmental variable. Using default.")
 			CSRFKey = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 		} else {
 			log.Println("CSRF key OK", os.Getenv("COSGO_CSRF_KEY"))
@@ -179,6 +211,7 @@ func main() {
 	if *static == true {
 		s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 		ss := http.FileServer(http.Dir("./static/"))
+		sf := http.FileServer(http.Dir("./files/"))
 		// Serve /static folder and favicon etc
 		r.Methods("GET").Path("/favicon.ico").Handler(ss)
 		r.Methods("GET").Path("/robots.txt").Handler(ss)
@@ -191,7 +224,13 @@ func main() {
 		r.Methods("GET").Path("/static/{dir}/{whatever}.woff").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.ttf").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.txt").Handler(s)
-		// More static options soon.
+		r.Methods("GET").Path("/static/{dir}/{whatever}.mp3").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.m3u").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
+		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
+		r.Methods("GET").Path("/files/{whatever}").Handler(sf)
 	}
 
 	if *love == true {
@@ -217,7 +256,7 @@ func main() {
 
 	}
 
-	if *Debug == false {
+	if *debug == false {
 		log.Println("[switching logs to cosgo.log]")
 		OpenLogFile()
 	} else {
@@ -280,10 +319,22 @@ func QuickSelfTest(mailbox bool) {
 	if !*config {
 
 		if mailbox != true {
-			mandrillKey = os.Getenv("MANDRILL_KEY")
-			if mandrillKey == "" {
-				log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
-				os.Exit(1)
+
+			switch smtpstyle {
+			case "mandrill":
+				mandrillKey = os.Getenv("MANDRILL_KEY")
+				if mandrillKey == "" {
+					log.Fatal("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
+					os.Exit(1)
+				}
+			case "sendgrid":
+				sendgridKey = os.Getenv("SENDGRID_KEY")
+				if mandrillKey == "" {
+					log.Fatal("Fatal: environmental variable `SENDGRID_KEY` is Crucial.\n\n\t\tHint: export SENDGRID_KEY=123456789")
+					os.Exit(1)
+				}
+			default:
+				mailbox = true
 			}
 
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
@@ -293,7 +344,7 @@ func QuickSelfTest(mailbox bool) {
 			}
 
 		} else {
-				cosgoDestination = os.Getenv("COSGO_DESTINATION")
+			cosgoDestination = os.Getenv("COSGO_DESTINATION")
 			if cosgoDestination == "" {
 
 				log.Println("Warning: environmental variable `COSGO_DESTINATION` is not set. Using default.")
@@ -336,9 +387,8 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		data := map[string]interface{}{
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
-			"CaptchaId":      captcha.New(),
+			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
 		}
-
 		t.ExecuteTemplate(w, "Index", data)
 
 	}
@@ -419,7 +469,7 @@ func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-// EmailHandler checks the Captcha string, and calls EmailSender
+// EmailHandler checks the Captcha string, and calls MandrillSender
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 	destination := cosgoDestination
 	var query url.Values
@@ -437,7 +487,13 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 				fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
 			} else {
 				// Phasing Mandrill out
-				EmailSender(rw, r, destination, query)
+				switch smtpstyle {
+				case "mandrill":
+					MandrillSender(rw, r, destination, query)
+				case "sendgrid":
+					SendgridSender(rw, r, destination, query)
+				}
+
 			}
 		}
 	} else {
@@ -446,7 +502,7 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-// EmailSender always returns success for the visitor. This function needs some work.
+// MandrillSender always returns success for the visitor. This function needs some work.
 func EmailSaver(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
 	form := ParseQuery(query)
 	t := time.Now()
@@ -465,8 +521,8 @@ func EmailSaver(rw http.ResponseWriter, r *http.Request, destination string, que
 
 }
 
-// EmailSender always returns success for the visitor. This function needs some work.
-func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+// MandrillSender always returns success for the visitor. This function needs some work.
+func MandrillSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
 	form := ParseQuery(query)
 	//Validate user submitted email address
 	err := emailx.Validate(form.Email)
@@ -488,14 +544,62 @@ func EmailSender(rw http.ResponseWriter, r *http.Request, destination string, qu
 		return
 	}
 
-	if sendEmail(destination, form) {
+	if sendMandrill(destination, form) {
 		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
 		http.Redirect(rw, r, "/", 301)
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 	} else {
 		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-		log.Printf("Debug: %s to mandrill %s", form, destination)
-		log.Printf("Debug: %s to mandrill %s", form.Message, destination)
+		log.Printf("debug: %s to mandrill %s", form, destination)
+		log.Printf("debug: %s to mandrill %s", form.Message, destination)
+
+		t, err := template.New("Error").ParseFiles("./templates/error.html")
+		if err == nil {
+			data := map[string]interface{}{
+				"err":            "Mail System",
+				"Key":            getKey(),
+				csrf.TemplateTag: csrf.TemplateField(r),
+			}
+			t.ExecuteTemplate(rw, "Error", data)
+		} else {
+			log.Printf("template error: %s at %s", r.UserAgent(), r.RemoteAddr)
+			log.Println(err)
+			http.Redirect(rw, r, "/", 301)
+		}
+	}
+}
+
+// SendgridSender always returns success for the visitor. This function needs some work.
+func SendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+	form := ParseQuery(query)
+	//Validate user submitted email address
+	err := emailx.Validate(form.Email)
+	if err != nil {
+		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
+
+		if err == emailx.ErrInvalidFormat {
+			fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
+		}
+		if err == emailx.ErrUnresolvableHost {
+			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
+		}
+	}
+	//Normalize email address
+	form.Email = emailx.Normalize(form.Email)
+	//Is it empty?
+	if form.Email == "" {
+		http.Redirect(rw, r, "/", 301)
+		return
+	}
+
+	if sendgridSend(destination, form) {
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		http.Redirect(rw, r, "/", 301)
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+	} else {
+		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Printf("debug: %s to mandrill %s", form, destination)
+		log.Printf("debug: %s to mandrill %s", form.Message, destination)
 
 		t, err := template.New("Error").ParseFiles("./templates/error.html")
 		if err == nil {
@@ -617,7 +721,14 @@ func getLink(fastcgi bool, bind string, port string) string {
 
 func DoConfig() {
 	if !seconf.Detect("cosgo") {
-		seconf.Create("cosgo", "cosgo config", "CSRF Key, can be 1 for auto generated.", "COSGO Key, can be 1 for auto generated.", "COSGO_DESTINATION, can be 1 for autogenerated.", "MANDRILL_KEY, can be 0 to not use.")
+		seconf.Create("cosgo",
+			"cosgo config generator",
+			"32 bit CSRF Key, can be 1 for auto generated.",
+			"COSGO_KEY: can be 1 for auto generated.\nIf auto-generated, the key will change every time cosgo restarts.\nThis is a spam prevention technique,\nit changes the form's POST end point on startup.",
+			"COSGO_DESTINATION, where SMTP mails will be sent.\n In mailbox mode, COSGO_DESTINATION is where all mail is addressed.\nFor good time, set this to the email address you will be replying from.",
+			"Please select from the following mailbox options. \n\n\t\tmandrill\tsendgrid. \n\nUse 0 for local mailbox mode.",
+			"MANDRILL_KEY, can be 0 if local or sendgrid.",
+			"SENDGRID_KEY, can be 0 if local or mandrill.")
 	}
 
 	configdecoded, err := seconf.Read("cosgo")
@@ -639,26 +750,30 @@ func DoConfig() {
 	cosgoAPIKey = configarray[1]
 	cosgoDestination = configarray[2]
 	mandrillKey = configarray[3]
+	sendgridKey = configarray[4]
 
 	if configarray[0] == "1" {
-			CSRFKey = []byte("LI80POC1xcT01jmQBsEyxyrDCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
+		CSRFKey = []byte("LI80POC1xcT01jmQBsEyxyrDCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	}
 
 	if configarray[1] == "1" {
-			cosgoAPIKey = ""
-		}
+		cosgoAPIKey = ""
+	}
 
 	if configarray[2] == "1" {
-			cosgoDestination = "user@localhost"
+		cosgoDestination = "user@example.com"
 	}
 
 	if configarray[3] == "0" {
-			mandrillKey = ""
+		mandrillKey = ""
+	}
+	if configarray[4] == "0" {
+		sendgridKey = ""
 	}
 	if *mailbox {
-	log.Println("Saving mail (cosgo.mbox) addressed to " + cosgoDestination)
-	}else {
-	log.Println("Sending via mandrill to " + cosgoDestination)
+		log.Println("Saving mail (cosgo.mbox) addressed to " + cosgoDestination)
+	} else {
+		log.Println("Sending via mandrill to " + cosgoDestination)
 
 	}
 }
