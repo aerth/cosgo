@@ -59,8 +59,6 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-var smtpstyle = os.Getenv("COSGO_MODE")
-
 var (
 	//	mandrillAPIUrl   string
 	mandrillKey      string
@@ -93,7 +91,7 @@ func usage() {
 	time.Sleep(1000 * time.Millisecond)
 	flag.PrintDefaults()
 	time.Sleep(1000 * time.Millisecond)
-	fmt.Println("\nExample: cosgo -insecure -port 8080 -fastcgi -debug")
+	fmt.Println("\nExample: cosgo -secure -port 8080 -fastcgi -debug")
 }
 
 var (
@@ -119,7 +117,7 @@ var (
 	bind       = flag.String("bind", "127.0.0.1", "Default: 127.0.0.1, try 0.0.0.0")
 	debug      = flag.Bool("debug", false, "Send logs to stdout. Dont switch to cosgo.log")
 	api        = flag.Bool("api", false, "Show error.html for /")
-	insecure   = flag.Bool("insecure", false, "Accept insecure cookie transfer (http/80). Otherwise, you must use SSL.")
+	secure     = flag.Bool("secure", false, "PRODUCTION MODE - Accept only https secure cookie transfer.")
 	mailmode   = flag.String("mailmode", "mailbox", "Choose one: mailbox, mandrill, sendgrid")
 	fastcgi    = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
 	static     = flag.Bool("static", true, "Serve /static/ files. Use -static=false to disable")
@@ -154,6 +152,7 @@ func main() {
 	// You should recieve a copy of the MIT license with this software.
 	fmt.Println(logo)
 	fmt.Println("\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and local mbox ability.\n")
+
 	// Set flags from command line
 	//flag.Usage = usage
 	flag.Parse()
@@ -191,7 +190,7 @@ func main() {
 			fmt.Printf("done.")
 		}
 	}
-	fmt.Printf("past.")
+
 	// If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
 	backwardsComp()
 	// Define CSRFKey with env var, or set default.
@@ -212,9 +211,18 @@ func main() {
 
 		// Print API Key
 		if os.Getenv("COSGO_API_KEY") == "" {
-			log.Println("Boot: Generating Random POST Key...")
+
 			// The length of the API key can be modified here.
+			go func() {
+				for {
+					log.Println("Boot: Generating Random POST Key...")
+					cosgoKey = GenerateAPIKey(20)
+					time.Sleep(42 * time.Second)
+				}
+			}()
+
 			cosgoKey = GenerateAPIKey(20)
+
 			// Print new GenerateAPIKey
 			log.Println("Info: COSGO_API_KEY=" + getKey())
 		} else {
@@ -276,9 +284,14 @@ func main() {
 	http.Handle("/", r)
 	//End Routing
 
+	// Start Runtime Info
+	fmt.Println("\n")
+	if *secure == false {
+		log.Println("Warning: Running in *insecure* mode.")
+		log.Println("Hint: Use -secure flag for https only.")
+	}
 	if mailbox == true {
-		log.Println("Mode: mailbox")
-		log.Println("Hint: read mail with mutt -Rf cosgo.mbox")
+		log.Println("Mode: mailbox (read with mutt -Rf cosgo.mbox)")
 		f, err := os.OpenFile("./cosgo.mbox", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			log.Printf("error opening file: %v", err)
@@ -305,15 +318,15 @@ func main() {
 		if err != nil {
 			log.Fatal("Could not bind: ", err)
 		}
-		if *insecure == true {
+		if *secure == false {
 			log.Fatal(fcgi.Serve(listener, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(false))(r)))
 		} else {
 			log.Println("info: https:// only")
 			log.Fatal(fcgi.Serve(listener, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(true))(r)))
 		}
-	} else if *fastcgi == false && *insecure == true {
+	} else if *fastcgi == false && *secure == false {
 		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(false))(r)))
-	} else if *fastcgi == false && *insecure == false {
+	} else if *fastcgi == false && *secure == true {
 		log.Println("info: https:// only")
 		// Change this CSRF auth token in production!
 		log.Fatal(http.ListenAndServe(":"+*port, csrf.Protect(CSRFKey, csrf.HttpOnly(true), csrf.Secure(true))(r)))
@@ -458,18 +471,20 @@ func EmailHandler(rw http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 			query = r.Form
 			if mailbox == true {
-				EmailSaver(rw, r, destination, query)
-				log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-				fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+
 			} else {
 				// Phasing Mandrill out
-				switch smtpstyle {
+				switch *mailmode {
 				case "mandrill":
 					MandrillSender(rw, r, destination, query)
 				case "sendgrid":
 					SendgridSender(rw, r, destination, query)
-				}
 
+				default:
+					EmailSaver(rw, r, destination, query)
+					log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+					fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+				}
 			}
 		}
 	} else {
@@ -765,10 +780,10 @@ func LoadConfig() bool {
 }
 
 func QuickSelfTest() {
-	log.Println("Starting self test...")
+	return
 	if !*config {
 		if mailbox != true {
-			switch smtpstyle {
+			switch *mailmode {
 			case "mandrill":
 				mandrillKey = os.Getenv("MANDRILL_KEY")
 				if mandrillKey == "" {
@@ -818,5 +833,4 @@ func QuickSelfTest() {
 		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
 	}
 
-	log.Println("Passed self test.")
 }
