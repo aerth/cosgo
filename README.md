@@ -2,13 +2,12 @@
 when all you needed was a contact form, anyways.
 
 
-* Contact form saves messages to a local mbox file, or sends mail with mandrill for free.
-* Uses `templates/index.html` and `templates/error.html` while serving `static/` files
-* Tested on NetBSD and Debian servers.
-* Try Cosgo right now. https://isupon.us
-
-[![Build Status](https://travis-ci.org/aerth/cosgo.svg?branch=master)](https://travis-ci.org/aerth/cosgo)
-
+* Contact form saves messages to a local mbox file, or sends mail with Sendgrid for free. Mandrill option.
+* Uses Go style templates, `templates/index.html` and `templates/error.html`
+* ...while serving /static/* files, /favicon.ico, /robots.txt.
+* You can stuff things in /files/ and cosgo will serve them, too.
+* Tested on NetBSD and Debian servers, even runs on Windows. Probably runs great on anything else, too.
+* Contact the author using **cosgo** right now. https://isupon.us
 
 ```
 
