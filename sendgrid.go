@@ -15,11 +15,6 @@ func canSendgrid() bool {
 }
 
 func sendgridSend(destinationEmail string, form *Form) bool {
-	//if !canMandrill() {
-
-	//	return false
-	//}
-
 	sg := sendgrid.NewSendGridClientWithApiKey(sendgridKey)
 	message := sendgrid.NewMail()
 	message.AddTo(destinationEmail)

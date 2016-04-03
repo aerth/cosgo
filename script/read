@@ -1,0 +1,7 @@
+#!/bin/sh
+# simple mutt shortcut
+# read mail by entering cosgo directory and typing the following at your prompt.
+#
+#    script/read
+
+mutt -Rf cosgo.mbox

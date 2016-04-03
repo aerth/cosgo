@@ -48,7 +48,10 @@ import (
 	"net/http/fcgi"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/aerth/seconf"
@@ -56,6 +59,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/goware/emailx"
+	sl "github.com/hydrogen18/stoppableListener"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -235,9 +239,7 @@ func main() {
 	r.HandleFunc("/", HomeHandler)
 
 	//The Magic
-	r.HandleFunc("/"+cosgoKey+"/form", HomeHandler)
-	r.HandleFunc("/"+cosgoKey+"/form/", HomeHandler)
-	r.HandleFunc("/"+cosgoKey+"/send", EmailHandler)
+	r.HandleFunc("/{{whatever}}/send", EmailHandler)
 
 	//Defaults to true. We are serving out of /static/ for now
 	if *static == true {
@@ -304,44 +306,142 @@ func main() {
 	}
 
 	log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
-	// Start Serving!
-	for {
-		// TODO: switch if nonsense to switch case
-		if *fastcgi == true {
-			listener, err := net.Listen("tcp", *bind+":"+*port)
-			if err != nil {
-				log.Fatal("Could not bind: ", err)
-			}
-			if *secure == false {
-				log.Fatal(fcgi.Serve(listener,
-					csrf.Protect(CSRFKey,
-						csrf.HttpOnly(true),
-						csrf.Secure(false))(r)))
-			} else {
-				log.Println("info: https:// only")
-				log.Fatal(fcgi.Serve(listener,
-					csrf.Protect(CSRFKey,
-						csrf.HttpOnly(true),
-						csrf.Secure(true))(r)))
-			}
-		} else if *fastcgi == false && *secure == false {
-			log.Fatal(http.ListenAndServe(":"+*port,
-				csrf.Protect(CSRFKey,
-					csrf.HttpOnly(true),
-					csrf.Secure(false))(r)))
-		} else if *fastcgi == false && *secure == true {
-			log.Println("info: https:// only")
-			// Change this CSRF auth token in production!
-			log.Fatal(http.ListenAndServe(":"+*port,
-				csrf.Protect(CSRFKey,
-					csrf.HttpOnly(true),
-					csrf.Secure(true))(r)))
-		}
-	}
-	log.Fatal("cosgo is offline.")
-}
 
-// End main function
+	// Define listener
+
+	fmt.Println("Trying to listen on " + getLink(*fastcgi, *bind, *port))
+
+	oglistener, err := net.Listen("tcp", *bind+":"+*port)
+	if err != nil {
+		log.Println(err)
+	}
+
+	fmt.Println("Got oglistener")
+	// listener, err := sl.New(oglistener)
+	//
+	// if err != nil {
+	// 	log.Println(err)
+	// }
+
+	stop := make(chan os.Signal)
+	signal.Notify(stop, syscall.SIGINT)
+
+	listener, err := sl.New(oglistener)
+
+	if err != nil {
+		log.Println(err)
+	}
+	fmt.Println("Got listener")
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// Start Serving!
+
+	// TODO: switch if nonsense to switch case
+	// switch *fastcgi {
+	// case true:
+	// 	switch *secure {
+	// 	case false:
+	// 		fcgi.Serve(listener,
+	// 			csrf.Protect(CSRFKey,
+	// 				csrf.HttpOnly(true),
+	// 				csrf.Secure(false))(r))
+	// 		return
+	// 	case true:
+	// 		fcgi.Serve(listener,
+	// 			csrf.Protect(CSRFKey,
+	// 				csrf.HttpOnly(true),
+	// 				csrf.Secure(true))(r))
+	// 		return
+	// 	}
+	// case false:
+	// 	switch *secure {
+	// 	case true:
+	// 		http.Serve(listener,
+	// 			csrf.Protect(CSRFKey,
+	// 				csrf.HttpOnly(true),
+	// 				csrf.Secure(true))(r))
+	// 		return
+	// 	case false:
+	// 		fmt.Println("Got switcher")
+	// 		http.Serve(listener,
+	// 			csrf.Protect(CSRFKey,
+	// 				csrf.HttpOnly(true),
+	// 				csrf.Secure(false))(r))
+	//
+	// 		return
+	// 	}
+	// }
+	// fmt.Println("Got past switcher")
+
+	//listener.Stop()
+	// _, err = listener.Accept()
+	// fmt.Println(err)
+	fmt.Printf("Serving HTTP\n")
+	//go func() {
+	for {
+
+		listener, err = sl.New(oglistener)
+
+		//fmt.Printf("Waiting on server\n")
+		//go wg.Wait()
+		// TODO: switch if nonsense to switch case
+		switch *fastcgi {
+		case true:
+			switch *secure {
+			case false:
+				go fcgi.Serve(listener,
+					csrf.Protect(CSRFKey,
+						csrf.HttpOnly(true),
+						csrf.Secure(false))(r))
+				return
+			default:
+				go fcgi.Serve(listener,
+					csrf.Protect(CSRFKey,
+						csrf.HttpOnly(true),
+						csrf.Secure(true))(r))
+				return
+			}
+		case false:
+			switch *secure {
+			case true:
+				go http.Serve(listener,
+					csrf.Protect(CSRFKey,
+						csrf.HttpOnly(true),
+						csrf.Secure(true))(r))
+				return
+			default:
+				fmt.Println("made it ")
+				if listener != nil {
+
+					go http.Serve(listener,
+						csrf.Protect(CSRFKey,
+							csrf.HttpOnly(true),
+							csrf.Secure(false))(r))
+				}
+				//return
+			}
+
+			fmt.Printf("Serving HTTP\n")
+			select {
+			case signal := <-stop:
+				fmt.Printf("Got signal:%v\n", signal)
+				listener.Close()
+				listener.Stop()
+			default:
+				for {
+					fmt.Println("loop")
+					time.Sleep(cosgoRefresh)
+
+				}
+			}
+
+			return
+		}
+		listener.Close()
+		listener.Stop()
+		os.Exit(1)
+	} // end loop
+} // End main function
 
 func backwardsComp() {
 
@@ -467,34 +567,43 @@ func RedirectHomeHandler(rw http.ResponseWriter, r *http.Request) {
 
 // EmailHandler checks the Captcha string, and calls MandrillSender
 func EmailHandler(rw http.ResponseWriter, r *http.Request) {
+
 	destination := cosgoDestination
 	var query url.Values
-	if r.Method == "POST" {
+	fmt.Println(r.URL.Path)
+	ourpath := strings.TrimLeft(r.URL.Path, "/")
+	ourpath = strings.TrimRight(ourpath, "/send")
+
+	fmt.Println(ourpath)
+	fmt.Println(cosgoKey)
+	if r.Method == "POST" && strings.ContainsAny(r.URL.Path, cosgoKey) {
+		// Method is POST, URL KEY is correct.
 		if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
 			fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
-			log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+			log.Printf("User Error: CAPTCHA %s at %s", r.UserAgent(), r.RemoteAddr)
 			http.Redirect(rw, r, "/", 301)
 		} else {
+			// Captcha is correct.
+			log.Printf("User Human: %s at %s", r.UserAgent(), r.RemoteAddr)
 			r.ParseForm()
 			query = r.Form
-			if mailbox == true {
 
-			} else {
-				// Phasing Mandrill out
-				switch *mailmode {
-				case "mandrill":
-					MandrillSender(rw, r, destination, query)
-				case "sendgrid":
-					SendgridSender(rw, r, destination, query)
+			// Phasing Mandrill out
+			switch *mailmode {
+			case "mandrill":
+				MandrillSender(rw, r, destination, query)
+			case "sendgrid":
+				SendgridSender(rw, r, destination, query)
 
-				default:
-					EmailSaver(rw, r, destination, query)
-					log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-					fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
-				}
+			default:
+				EmailSaver(rw, r, destination, query)
+				log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+				fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
 			}
+
 		}
 	} else {
+		log.Printf("User Error: KEY %s at %s", r.UserAgent(), r.RemoteAddr)
 		http.Redirect(rw, r, "/", 301)
 	}
 
@@ -778,11 +887,18 @@ func LoadConfig() bool {
 	if configarray[4] == "0" {
 		sendgridKey = ""
 	}
-	if mailbox {
+
+	switch *mailmode {
+	case "mailbox":
 		log.Println("Saving mail (cosgo.mbox) addressed to " + cosgoDestination)
-	} else {
-		log.Println("Sending via mandrill to " + cosgoDestination)
+	case "mandrill":
+		log.Println("Sending via Mandrill to " + cosgoDestination)
+	case "sendgrid":
+		log.Println("Sending via Sendgrid to " + cosgoDestination)
+	default:
+		log.Fatalln("No mailmode.")
 	}
+
 	return true
 }
 

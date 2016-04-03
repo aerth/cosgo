@@ -1,4 +1,6 @@
 #!/bin/sh
+# This is for cosgo version 0.4 and under.
+
 if [ -z "$1" ];then
 echo "nothing to do. which instance are we launching?"
 exit 1
