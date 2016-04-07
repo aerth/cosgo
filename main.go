@@ -50,7 +50,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -135,7 +134,7 @@ var (
 	// TODO: dont use flags. Will be using "cosgo __action__" and env/seconf only.
 	help       = flag.Bool("help", false, "Show this and quit")
 	port       = flag.String("port", "8080", "Port to listen on")
-	bind       = flag.String("bind", "127.0.0.1", "Default: 127.0.0.1, try 0.0.0.0")
+	bind       = flag.String("bind", "0.0.0.0", "Default: 0.0.0.0 (all interfaces)... Try 127.0.0.1")
 	debug      = flag.Bool("debug", false, "Send logs to stdout. Dont switch to cosgo.log")
 	api        = flag.Bool("api", false, "Show error.html for /")
 	secure     = flag.Bool("secure", false, "PRODUCTION MODE - Accept only https secure cookie transfer.")
@@ -179,9 +178,11 @@ func getMandrillKey() string {
 }
 
 // homeHandler parses the ./templates/index.html template file.
-// This returns a web page with a form, captcha, CSRF token, and the cosgo API key to send the message.
+// This returns a web page with a themeable form, captcha, CSRF token, and the cosgo API key to send the message.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("home visitor: %s - %s - %s", r.UserAgent(), r.RemoteAddr, r.Host)
+	thyme := time.Now()
+	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		// Do Something
@@ -190,6 +191,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "We are experiencing some technical difficulties. Please come back soon!")
 	} else {
 		data := map[string]interface{}{
+			"Now":            nowtime,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
@@ -276,28 +278,25 @@ func redirecthomeHandler(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-// emailHandler checks the Captcha string, and the POST key.
+// emailHandler checks the Captcha string, and the POST key, and sends on its way.
 func emailHandler(rw http.ResponseWriter, r *http.Request) {
 
 	destination := cosgoDestination
 	var query url.Values
-	log.Println(r.URL.Path)
 	ourpath := strings.TrimLeft(r.URL.Path, "/")
 	ourpath = strings.TrimRight(ourpath, "/send")
+	log.Printf("\nComparing " + ourpath + " to " + cosgo.PostKey)
 
-	log.Println(ourpath)
-	log.Println(cosgo.PostKey)
+	if r.Method == "POST" && strings.ContainsAny(ourpath, cosgo.PostKey) {
 
-	if r.Method == "POST" && strings.ContainsAny(r.URL.Path, cosgo.PostKey) {
-		log.Printf("User Error: KEY %s at %s", r.UserAgent(), r.RemoteAddr)
-		log.Printf("Key Mismatch: ", r.URL.Path, cosgo.PostKey)
-		http.Redirect(rw, r, "/", 301)
+		log.Printf("\nKey Mismatch: ", ourpath, cosgo.PostKey, r.UserAgent(), r.RemoteAddr, "\n")
+		fmt.Fprintln(rw, "<html><p>What are we doing here? If you waited too long to send the form, try again. <a href=\"/\">Go back</a>?</p></html>")
 		return
 	}
 
 	// Method is POST, URL KEY is correct.
 	if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
-		//fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
+		fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
 		log.Printf("User Error: CAPTCHA %s at %s", r.UserAgent(), r.RemoteAddr)
 		return
 	} else {
@@ -324,10 +323,12 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 			emailSaver(rw, r, destination, query)
 			log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 			fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+
 		}
 
 	}
-
+	fmt.Fprintln(rw, "<html><p>what are we doing here? <a href=\"/\">Go back</a>?</p></html>")
+	log.Println("what are we doing here")
 }
 
 // emailSaver always returns success for the visitor. This function needs some work.
@@ -353,7 +354,7 @@ func emailSaver(rw http.ResponseWriter, r *http.Request, destination string, que
 func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
 	form := parseQuery(query)
 	//Validate user submitted email address
-	err := emailx.Validate(form.Email)
+	err = emailx.Validate(form.Email)
 	if err != nil {
 		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
 
@@ -525,7 +526,7 @@ func generateAPIKey(n int) string {
 	for i := range b {
 		b[i] = runes[rand.Intn(len(runes))]
 	}
-	return string(b)
+	return strings.TrimSpace(string(b))
 }
 
 //openLogFile switches the log engine to a file, rather than stdout.
@@ -540,12 +541,15 @@ func openLogFile() {
 }
 
 //getLink returns the bind:port or http://bind:port string
-func getLink(fastcgi bool, bind string, port string) string {
+func getLink(fastcgi bool, showbind string, port string) string {
+	if showbind == "0.0.0.0" {
+		showbind = "127.0.0.1"
+	}
 	if fastcgi == true {
-		link := bind + ":" + port
+		link := "fastcgi://" + showbind + ":" + port
 		return link
 	}
-	link := "http://" + bind + ":" + port
+	link := "http://" + showbind + ":" + port
 	return link
 
 }
@@ -728,13 +732,37 @@ func backwardsComp() {
 
 func main() {
 
+	// Yay for signal handling. For now just quit.
+	interrupt := make(chan os.Signal, 1)
+	stop := make(chan os.Signal, 1)
+	reload := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	signal.Notify(stop, syscall.SIGINT)
+	signal.Notify(reload, syscall.SIGHUP)
+	signal.Ignore(syscall.SIGSTOP)
+	go func() {
+		select {
+		case signal := <-interrupt:
+			fmt.Println("Got signal:", signal)
+			fmt.Println("Dying")
+			os.Exit(0)
+		case signal := <-reload:
+			fmt.Println("Got signal:", signal)
+			fmt.Println("Dying")
+			os.Exit(0)
+		case signal := <-stop:
+			fmt.Printf("Got signal:%v\n", signal)
+			fmt.Println("Dying")
+			os.Exit(0)
+		}
+	}()
+
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// There should be a copy of the MIT license bundled with this software.
 	fmt.Println(logo)
 	fmt.Printf("\n\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and a local mbox feature.\n\n")
 
-	// Set flags from command line
-	//flag.Usage = usage
+	// Future: dont use flags pkg
 	flag.Parse()
 	args := flag.Args()
 	if len(args) > 1 {
@@ -800,8 +828,6 @@ func main() {
 				cosgo.PostKey = generateAPIKey(40)
 				log.Printf("Info: POST Key is " + cosgo.PostKey + "\n")
 				time.Sleep(cosgoRefresh)
-				stop := make(chan os.Signal)
-				signal.Notify(stop, syscall.SIGINT)
 			}
 		}()
 	} else {
@@ -856,7 +882,7 @@ func main() {
 
 	// Retrieve Captcha IMG and WAV
 	r.Methods("GET").Path("/captcha/{captchacode}.png").Handler(captcha.Server(StdWidth, StdHeight))
-	r.Methods("GET").Path("/captcha/{captchacode}.wav").Handler(captcha.Server(StdWidth, StdHeight))
+	r.Methods("GET").Path("/captcha/download/{captchacode}.wav").Handler(captcha.Server(StdWidth, StdHeight))
 
 	http.Handle("/", r)
 	//End Routing
@@ -891,87 +917,106 @@ func main() {
 	log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
 
 	// Define listener
-
-	fmt.Println("Trying to listen on " + getLink(*fastcgi, *bind, *port))
-
+	log.Println("Trying to listen on " + getLink(*fastcgi, *bind, *port))
 	oglistener, err := net.Listen("tcp", *bind+":"+*port)
 	if err != nil {
 		log.Println(err)
+		os.Exit(1)
 	}
-
-	fmt.Println("Got oglistener")
-	// listener, err := sl.New(oglistener)
-	//
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-
-	stop := make(chan os.Signal)
-	signal.Notify(stop, syscall.SIGINT)
 	listener, err := sl.New(oglistener)
 	if err != nil {
 		log.Println(err)
+		os.Exit(1)
 	}
 	log.Println("Got listener")
-	var wg sync.WaitGroup
-	wg.Add(1)
 
 	// Start Serving!
 	for {
+
 		listener, err = sl.New(oglistener)
-		// Start listening in a goroutine
-		switch *fastcgi {
-		case true:
-			switch *secure {
-			case false:
-				go fcgi.Serve(listener,
-					csrf.Protect(antiCSRFkey,
-						csrf.HttpOnly(true),
-						csrf.Secure(false))(r))
-				return
-			default:
-				go fcgi.Serve(listener,
-					csrf.Protect(antiCSRFkey,
-						csrf.HttpOnly(true),
-						csrf.Secure(true))(r))
-				return
-			}
-		case false:
-			switch *secure {
-			case true:
-				go http.Serve(listener,
-					csrf.Protect(antiCSRFkey,
-						csrf.HttpOnly(true),
-						csrf.Secure(true))(r))
-				return
-			default:
-				if listener != nil {
-					go http.Serve(listener,
-						csrf.Protect(antiCSRFkey,
-							csrf.HttpOnly(true),
-							csrf.Secure(false))(r))
-				}
-				//return
-			}
-
-			fmt.Printf("Serving HTTP\n")
-			select {
-			case signal := <-stop:
-				fmt.Printf("Got signal:%v\n", signal)
-				listener.Close()
-				listener.Stop()
-			default:
-				for {
-					log.Println("Zzzzzz")
-					time.Sleep(cosgoRefresh)
-					//Do reload of server here so mux gets the updated routing info
-				}
-			}
-
-			return
+		if err != nil {
+			log.Fatalln(err)
 		}
-		listener.Close()
-		listener.Stop()
-		os.Exit(1)
-	} // end loop
-} // End main function
+
+		// Start listening in a goroutine
+		go func() {
+
+			switch *fastcgi {
+			case true:
+				switch *secure {
+				case false: // Fastcgi + http://
+					if listener != nil {
+						go fcgi.Serve(listener,
+							csrf.Protect(antiCSRFkey,
+								csrf.HttpOnly(true),
+								csrf.FieldName("cosgo-token"),
+								csrf.CookieName("cosgo-cookie"),
+								csrf.Secure(false))(r))
+					} else {
+						log.Fatalln("nil listener")
+					}
+				case true: //
+					if listener != nil {
+						go fcgi.Serve(listener,
+							csrf.Protect(antiCSRFkey,
+								csrf.HttpOnly(true),
+								csrf.FieldName("cosgo-token"),
+								csrf.CookieName("cosgo-cookie"),
+								csrf.Secure(true))(r))
+					} else {
+						log.Fatalln("nil listener")
+					}
+				}
+			case false:
+				switch *secure {
+				case true: // https://, no fastcgi
+					if listener != nil {
+						go http.Serve(listener,
+							csrf.Protect(antiCSRFkey,
+								csrf.HttpOnly(true),
+								csrf.FieldName("cosgo-token"),
+								csrf.CookieName("cosgo-cookie"),
+								csrf.Secure(true))(r))
+					} else {
+						log.Fatalln("nil listener")
+					}
+				case false: // This is using http://, no fastcgi.
+					if listener != nil {
+						go http.Serve(listener,
+							csrf.Protect(antiCSRFkey,
+								csrf.HttpOnly(true),
+								csrf.FieldName("cosgo-token"),
+								csrf.CookieName("cosgo-cookie"),
+								csrf.Secure(false))(r))
+					} else {
+						log.Fatalln("nil listener")
+					}
+					//return
+					//	log.Println("Debug: Looped")
+				}
+				//	log.Println("Debug: Looped22")
+			}
+		}()
+		// select {
+		// case signal := <-stop:
+		// 	fmt.Printf("Got signal:%v\n", signal)
+		// 	listener.Close()
+		// 	listener.Stop()
+		// 	//fmt.Println("Dying")
+		// 	//os.Exit(0)
+		// default:
+
+		select {
+
+		default:
+			log.Println("Zzzzzz")
+			time.Sleep(cosgoRefresh)
+			//Do reload of server here so mux gets the updated routing info
+		}
+		//	log.Println("got it")
+
+		//}
+
+	}
+
+} // end loop

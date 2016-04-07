@@ -5,8 +5,12 @@
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
 </head>
-<form id="contact-form" action="/{{.Key}}8/send" method="POST">
-    <input type="text" name="email" placeholder="email" required/><br/>
+<body style="text-align:center; margin: 10px;">
+  <h1>cosgo</h1>
+  <h2>contact form server</h2>
+
+<form id="contact-form" action="/{{.Key}}/send" method="POST">
+    <label>Email: <input type="text" name="email" placeholder="email" required/></label><br/>
     <input type="text" name="subject" placeholder="subject"/><br/>
     <textarea name="message" placeholder="message" required/></textarea><br/>
     {{ .csrfField }}
@@ -27,6 +31,14 @@
     <input id="contact-submit" type="submit" value="Say hello!" />
 </form>
 
+<pre style="text-align: left; position: absolute; bottom: 0px; left: 10px;">
+debug: {{.Key}}
+time: {{.Now}}
+</pre>
+
+<pre style="text-align: right; position: absolute; bottom: 0px; right: 10px;">
+source code: https://github.com/aerth/cosgo
+</pre>
 <script>
 function setSrcQuery(e, q) {
   var src  = e.src;
