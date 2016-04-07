@@ -8,17 +8,17 @@
 <body style="text-align:center; margin: 10px;">
   <h1>cosgo</h1>
   <h2>contact form server</h2>
-
+<a name="contact"></a>
 <form id="contact-form" action="/{{.Key}}/send" method="POST">
-    <label>Email: <input type="text" name="email" placeholder="email" required/></label><br/>
-    <input type="text" name="subject" placeholder="subject"/><br/>
-    <textarea name="message" placeholder="message" required/></textarea><br/>
+    <label>Email: <input type="text" name="email" placeholder="you@yours.com" required/></label><br/>
+    <label>Subject: <input type="text" name="subject" placeholder="what a cool contact form"/><br/>
+    <label>Message: <textarea name="message" placeholder="i use cosgo! thanks!" required/></textarea><br/>
     {{ .csrfField }}
 
 
     <p><img id=image src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
 
-    <a href="#" onclick="reload()">Reload Code</a> | <a href="#" onclick="playAudio()">Play Audio</a>
+    <a href="#contact" onclick="reload()">Reload Code</a> | <a href="#" onclick="playAudio()">Play Audio</a>
     <br>
 
     <audio id=audio controls style="display:none;text-align:center;" src="/captcha/{{.CaptchaId}}.wav" preload=none>
@@ -40,6 +40,8 @@ time: {{.Now}}
 source code: https://github.com/aerth/cosgo
 </pre>
 <script>
+
+<!-- you can remove all this javascript if you need, its for reloading and playing audio and changing language. -->
 function setSrcQuery(e, q) {
   var src  = e.src;
   var p = src.indexOf('?');

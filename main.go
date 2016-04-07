@@ -68,7 +68,7 @@ var (
 	cosgoDestination string
 	antiCSRFkey      []byte
 	Mail             *log.Logger
-	cosgoRefresh     = 42 * time.Second // Will change in a few commits.
+	cosgoRefresh     = 42 * time.Minute // Will change in a few commits.
 	err              error
 )
 
@@ -543,7 +543,7 @@ func openLogFile() {
 //getLink returns the bind:port or http://bind:port string
 func getLink(fastcgi bool, showbind string, port string) string {
 	if showbind == "0.0.0.0" {
-		showbind = "127.0.0.1"
+		showbind = "localhost"
 	}
 	if fastcgi == true {
 		link := "fastcgi://" + showbind + ":" + port
