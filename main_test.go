@@ -15,8 +15,8 @@ func TestTest(T *testing.T) {
 
 func TestRandom(t *testing.T) {
 	log.Println("Test Random Key Generator")
-	cosgoAPIKey = GenerateAPIKey(20)
-	cosgoAPIKeyTest := GenerateAPIKey(20)
+	cosgoAPIKey := generateAPIKey(20)
+	cosgoAPIKeyTest := generateAPIKey(20)
 	assert.NotEqual(t, cosgoAPIKey, cosgoAPIKeyTest)
 }
 func TestReadEnv(t *testing.T) {
@@ -26,8 +26,8 @@ func TestReadEnv(t *testing.T) {
 	keytest := "123"
 	assert.Equal(t, key, keytest)
 }
-func TestQuickSelfTest(t *testing.T) {
+func TestquickSelfTest(t *testing.T) {
 	os.Setenv("COSGO_DESTINATION", "fake@email.com")
 	os.Setenv("MANDRILL_KEY", "12345")
-	QuickSelfTest(false)
+	quickSelfTest()
 }

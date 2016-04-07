@@ -1,20 +1,14 @@
 package main
 
-import (
-	"fmt"
+import sendgrid "github.com/sendgrid/sendgrid-go"
 
-	sendgrid "github.com/sendgrid/sendgrid-go"
-)
-
+// Form is our email
 type Form struct {
 	Name, Email, Subject, Message string
 }
 
-func canSendgrid() bool {
-	return true
-}
-
-func sendgridSend(destinationEmail string, form *Form) bool {
+// sendgridSend connects to the Sendgrid API and processes the form.
+func sendgridSend(destinationEmail string, form *Form) (ok bool, msg string) {
 	sg := sendgrid.NewSendGridClientWithApiKey(sendgridKey)
 	message := sendgrid.NewMail()
 	message.AddTo(destinationEmail)
@@ -22,12 +16,9 @@ func sendgridSend(destinationEmail string, form *Form) bool {
 	message.SetFromName(form.Name)
 	message.SetSubject(form.Subject)
 	message.SetText(form.Message)
-	if r := sg.Send(message); r == nil {
-		fmt.Println("Sendgrid Email sent!")
-		return true
-	} else {
-		fmt.Println(r)
-		return false
+	r := sg.Send(message)
+	if r == nil {
+		return true, string("Sendgrid Email sent from" + destinationEmail)
 	}
-
+	return false, string("Sendgrid Error: (" + destinationEmail + ")" + r.Error())
 }
