@@ -665,14 +665,14 @@ func quickSelfTest() (err error) {
 	_, err = template.New("Index").ParseFiles("./templates/index.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
-		log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
+		log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
 	}
 
 	// Make sure Error pages template is present
 	_, err = template.New("Error").ParseFiles("./templates/error.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
-		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
+		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
 	}
 
 	//
