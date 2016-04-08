@@ -80,7 +80,7 @@ type Cosgo struct {
 var cosgo = new(Cosgo)
 
 type C struct {
-	CaptchaId string
+	CaptchaID string
 }
 
 const (
@@ -136,7 +136,6 @@ var (
 	port       = flag.String("port", "8080", "Port to listen on")
 	bind       = flag.String("bind", "0.0.0.0", "Default: 0.0.0.0 (all interfaces)... Try 127.0.0.1")
 	debug      = flag.Bool("debug", false, "Send logs to stdout. Dont switch to cosgo.log")
-	api        = flag.Bool("api", false, "Show error.html for /")
 	secure     = flag.Bool("secure", false, "PRODUCTION MODE - Accept only https secure cookie transfer.")
 	mailmode   = flag.String("mailmode", localmail, "Choose one: mailbox, mandrill, sendgrid")
 	fastcgi    = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
@@ -147,15 +146,6 @@ var (
 	custom     = flag.String("custom", "default", "Example: cosgo2 ...creates $HOME/.cosgo2")
 	mailbox    = true
 )
-
-/*
-TODO:
-cosgo config
-cosgo -h, cosgo help
-cosgo fastcgi, cosgo http, cosgo
-cosgo reconfig
-cosgo custom custom-config-path
-*/
 
 var logo = `
                            _
@@ -180,7 +170,7 @@ func getMandrillKey() string {
 // homeHandler parses the ./templates/index.html template file.
 // This returns a web page with a themeable form, captcha, CSRF token, and the cosgo API key to send the message.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("home visitor: %s - %s - %s", r.UserAgent(), r.RemoteAddr, r.Host)
+	log.Printf("Visitor: %s %s %s %s", r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
 	thyme := time.Now()
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
@@ -208,8 +198,8 @@ func loveHandler(w http.ResponseWriter, r *http.Request) {
 	p := bluemonday.UGCPolicy()
 	subdomain := getSubdomain(r)
 	lol := p.Sanitize(r.URL.Path[1:])
-	if r.Method == "POST" {
-		log.Printf("Something tried POST on %s", lol)
+	if r.Method != "GET" {
+		log.Printf("Something tried %s on %s", r.Method, lol)
 		http.Redirect(w, r, "/", 301)
 	}
 	if subdomain == "" {
@@ -245,29 +235,6 @@ func customErrorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//
-// // contactHandler displays a contact form with CSRF and a Cookie. And maybe a captcha and drawbridge.
-// func contactHandler(w http.ResponseWriter, r *http.Request) {
-// 	log.Printf("contact: %s - %s at %s", r.Host, r.UserAgent(), r.RemoteAddr)
-// 	t, err := template.New("Contact").ParseFiles("./templates/form.html")
-// 	if err == nil {
-// 		// Allow form in error page
-// 		data := map[string]interface{}{
-// 			"Key":            getKey(),
-// 			csrf.TemplateTag: csrf.TemplateField(r),
-// 			"CaptchaId":      captcha.New(),
-// 		}
-//
-// 		t.ExecuteTemplate(w, "Contact", data)
-// 	} else {
-// 		log.Printf("Error: form template error: %s at %s", r.UserAgent(), r.RemoteAddr)
-// 		log.Printf("Hint: Check ./templates/form.html")
-// 		log.Println(err)
-// 		http.Redirect(w, r, "/", 301)
-// 	}
-//
-// }
-
 // redirecthomeHandler redirects everyone home ("/") with a 301 redirect.
 func redirecthomeHandler(rw http.ResponseWriter, r *http.Request) {
 	p := bluemonday.UGCPolicy()
@@ -285,56 +252,74 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	var query url.Values
 	ourpath := strings.TrimLeft(r.URL.Path, "/")
 	ourpath = strings.TrimRight(ourpath, "/send")
-	log.Printf("\nComparing " + ourpath + " to " + cosgo.PostKey)
 
-	if r.Method == "POST" && strings.ContainsAny(ourpath, cosgo.PostKey) {
+	// Check POST
+	if r.Method != "POST" {
+		log.Printf("\nNot a POST request... \n\t" + r.RemoteAddr + r.RequestURI + r.UserAgent())
+		return
+	}
 
-		log.Printf("\nKey Mismatch: ", ourpath, cosgo.PostKey, r.UserAgent(), r.RemoteAddr, "\n")
+	// Check POST Key
+	log.Printf("\nComparing... \n\t" + ourpath + "\n\t" + cosgo.PostKey)
+	if ourpath != cosgo.PostKey {
+		log.Println("Key Mismatch. ", r.UserAgent(), r.RemoteAddr, r.RequestURI+"\n")
 		fmt.Fprintln(rw, "<html><p>What are we doing here? If you waited too long to send the form, try again. <a href=\"/\">Go back</a>?</p></html>")
 		return
 	}
 
-	// Method is POST, URL KEY is correct.
+	// Method is POST, URL KEY is correct. Check CAPTCHA.
 	if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
-		fmt.Fprintf(rw, "You may be a robot. Can you go back and try again?")
+		fmt.Fprintln(rw, "<html><p>You may be a robot! Please go <a href=\"/\">back</a> and try again!</p></html>")
 		log.Printf("User Error: CAPTCHA %s at %s", r.UserAgent(), r.RemoteAddr)
 		return
-	} else {
-		// Captcha is correct. POST key is correct.
-		log.Printf("User Human: %s at %s", r.UserAgent(), r.RemoteAddr)
-		log.Printf("Key Match: ", r.URL.Path, cosgo.PostKey)
+	}
 
-		r.ParseForm()
-		query = r.Form
+	// Captcha is correct. POST key is correct.
+	log.Printf("User Human: %s at %s", r.UserAgent(), r.RemoteAddr)
+	log.Printf("Key Match:\n\t%s\n\t%s", ourpath, cosgo.PostKey)
+	r.ParseForm()
 
-		// Phasing Mandrill out
-		switch *mailmode {
-		case smtpmandrill:
-			mandrillSender(rw, r, destination, query)
-			log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-			fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+	// Given the circumstances, you would think the form is ready.
+	query = r.Form
 
-		case smtpsendgrid:
-			sendgridSender(rw, r, destination, query)
-			log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-			fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+	// Switch mailmode and send it out! Success message may change/be customized in the future.
+	switch *mailmode {
+	case smtpmandrill:
+		mandrillSender(rw, r, destination, query)
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		return
 
-		default:
-			emailSaver(rw, r, destination, query)
-			log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-			fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
-
+	case smtpsendgrid:
+		err = sendgridSender(rw, r, destination, query)
+		if err != nil {
+			log.Printf("FAILURE-contact: %s at %s\n\t%s", r.UserAgent(), r.RemoteAddr, query)
+			fmt.Fprintln(rw, "<html><p>Thanks! But your email was not sent. Would you like to go <a href=\"/\">back</a>?</p></html>")
+			return
 		}
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		return
+	default:
+		err = emailSaver(rw, r, destination, query)
+		if err != nil {
+			log.Printf("FAILURE-contact: %s at %s\n\t%s", r.UserAgent(), r.RemoteAddr, query)
+			fmt.Fprintln(rw, "<html><p>Thanks! But your email was not sent. Would you like to go <a href=\"/\">back</a>?</p></html>")
+			return
+		}
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		return
 
 	}
-	fmt.Fprintln(rw, "<html><p>what are we doing here? <a href=\"/\">Go back</a>?</p></html>")
-	log.Println("what are we doing here")
+
 }
 
-// emailSaver always returns success for the visitor. This function needs some work.
-func emailSaver(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+// This saves an mbox file! Epic!
+func emailSaver(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
 	form := parseQuery(query)
 	t := time.Now()
+	// mbox files use two different date formats apparently.
 	mailtime := t.Format("Mon Jan 2 15:04:05 2006")
 	mailtime2 := t.Format("Mon, 2 Jan 2006 15:04:05 -0700")
 	Mail.Println("From " + form.Email + " " + mailtime)
@@ -345,13 +330,12 @@ func emailSaver(rw http.ResponseWriter, r *http.Request, destination string, que
 	Mail.Println("Subject: " + form.Subject)
 	Mail.Println("From: " + form.Email)
 	Mail.Println("Date: " + mailtime2)
-
 	Mail.Println("\n" + form.Message + "\n\n")
-
+	return nil
 }
 
 // mandrillSender always returns success for the visitor. This function needs some work.
-func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
 	form := parseQuery(query)
 	//Validate user submitted email address
 	err = emailx.Validate(form.Email)
@@ -368,15 +352,15 @@ func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string,
 	//Normalize email address
 	form.Email = emailx.Normalize(form.Email)
 	//Is it empty?
-	if form.Email == "" {
+	if form.Email == "" || form.Email == "@" {
 		http.Redirect(rw, r, "/", 301)
-		return
+		return errors.New("Blank Email")
 	}
 
 	if sendMandrill(destination, form) {
 		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
-		http.Redirect(rw, r, "/", 301)
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		return nil
 	} else {
 		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Printf("debug: %s to mandrill %s", form, destination)
@@ -390,17 +374,20 @@ func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string,
 				csrf.TemplateTag: csrf.TemplateField(r),
 			}
 			t.ExecuteTemplate(rw, "Error", data)
+			return err
 		} else {
 			log.Printf("template error: %s at %s", r.UserAgent(), r.RemoteAddr)
 			log.Println(err)
 			http.Redirect(rw, r, "/", 301)
+			return errors.New("error.html template error.")
 
 		}
 	}
+	return nil
 }
 
 // sendgridSender always returns success for the visitor. This function needs some work.
-func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) {
+func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
 	form := parseQuery(query)
 	//Validate user submitted email address
 	err := emailx.Validate(form.Email)
@@ -413,26 +400,23 @@ func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string,
 		if err == emailx.ErrUnresolvableHost {
 			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
 		}
+		return errors.New("Bad email address.")
 	}
 	//Normalize email address
 	form.Email = emailx.Normalize(form.Email)
 	//Is it empty?
-	if form.Email == "" {
-		http.Redirect(rw, r, "/", 301)
-		return
+	if form.Email == "" || form.Email == "@" {
+		return errors.New("Bad email address.")
 	}
 
 	if ok, msg := sendgridSend(destination, form); ok == true {
 		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
-		http.Redirect(rw, r, "/", 301)
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Printf(msg+" %s at %s", r.UserAgent(), r.RemoteAddr)
+		return nil
 	} else {
-
 		log.Printf(msg+" %s at %s", r.UserAgent(), r.RemoteAddr)
-		log.Printf("debug: %s to mandrill %s", form, destination)
-		log.Printf("debug: %s to mandrill %s", form.Message, destination)
-
+		// Basic error template
 		t, err := template.New("Error").ParseFiles("./templates/error.html")
 		if err == nil {
 			data := map[string]interface{}{
@@ -441,10 +425,12 @@ func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string,
 				csrf.TemplateTag: csrf.TemplateField(r),
 			}
 			t.ExecuteTemplate(rw, "Error", data)
+			return err
 		} else {
 			log.Printf("template error: %s at %s", r.UserAgent(), r.RemoteAddr)
 			log.Println(err)
 			http.Redirect(rw, r, "/", 301)
+			return errors.New("Bad error.html template.")
 		}
 	}
 }
@@ -494,9 +480,8 @@ func getSubdomain(r *http.Request) string {
 	hostparts := strings.Split(r.Host, ":")
 	requesthost := hostparts[0]
 	if net.ParseIP(requesthost) == nil {
-		log.Println("Requested domain: " + requesthost)
+		//log.Println("Info: " + requesthost)
 		domainParts := strings.Split(requesthost, ".")
-		log.Println("Subdomain:" + domainParts[0])
 		if len(domainParts) > 2 {
 			if domainParts[0] != "127" {
 				return domainParts[0]
@@ -928,8 +913,9 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-	log.Println("Got listener")
+	log.Printf("Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
 
+	boottime := time.Now()
 	// Start Serving!
 	for {
 
@@ -1009,7 +995,7 @@ func main() {
 		select {
 
 		default:
-			log.Println("Zzzzzz")
+			log.Printf("Uptime: %s", time.Since(boottime))
 			time.Sleep(cosgoRefresh)
 			//Do reload of server here so mux gets the updated routing info
 		}
