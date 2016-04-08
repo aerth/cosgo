@@ -873,7 +873,6 @@ func main() {
 	//End Routing
 
 	// Start Runtime Info
-	fmt.Println("")
 	if *secure == false {
 		log.Println("Warning: Running in *insecure* mode.")
 		log.Println("Hint: Use -secure flag for https only.")
