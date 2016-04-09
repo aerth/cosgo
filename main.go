@@ -67,9 +67,10 @@ var (
 	sendgridKey      string
 	cosgoDestination string
 	antiCSRFkey      []byte
-	Mail             *log.Logger
-	cosgoRefresh     = 42 * time.Minute // Will change in a few commits.
+	Mail             *log.Logger // local mbox
+	cosgoRefresh     = 42 * time.Minute
 	err              error
+	custompages      = "page" // serve /page/*.html - name of path to custom pages, example: "info" would serve html files in /info/
 )
 
 // Cosgo. This changes every [cosgoRefresh] minutes
@@ -144,6 +145,8 @@ var (
 	love       = flag.Bool("love", false, "Fun. Show I love ___ instead of redirect")
 	config     = flag.Bool("config", false, "Use config file at ~/.cosgo")
 	custom     = flag.String("custom", "default", "Example: cosgo2 ...creates $HOME/.cosgo2")
+	logpath    = flag.String("log", "cosgo.log", "Example: /dev/null or /var/log/cosgo/log")
+	quiet      = flag.Bool("quiet", false, "No output to stdout. For use with cron and -log flag such as: cosgo -quiet -log=/dev/null or cosgo -quiet -log=/var/log/cosgo/log")
 	mailbox    = true
 )
 
@@ -170,7 +173,9 @@ func getMandrillKey() string {
 // homeHandler parses the ./templates/index.html template file.
 // This returns a web page with a themeable form, captcha, CSRF token, and the cosgo API key to send the message.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Visitor: %s %s %s %s", r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
+	if *debug {
+		log.Printf("Visitor: %s %s %s %s", r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
+	}
 	thyme := time.Now()
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
 	t, err := template.New("Index").ParseFiles("./templates/index.html")
@@ -240,7 +245,9 @@ func redirecthomeHandler(rw http.ResponseWriter, r *http.Request) {
 	p := bluemonday.UGCPolicy()
 	domain := getDomain(r)
 	lol := p.Sanitize(r.URL.Path[1:])
-	log.Printf("Redirecting %s back home on %s", lol, domain)
+	if *debug {
+		log.Printf("Redirecting %s back home on %s", lol, domain)
+	}
 	http.Redirect(rw, r, "/", 301)
 
 }
@@ -260,7 +267,9 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check POST Key
-	log.Printf("\nComparing... \n\t" + ourpath + "\n\t" + cosgo.PostKey)
+	if *debug {
+		log.Printf("\nComparing... \n\t" + ourpath + "\n\t" + cosgo.PostKey)
+	}
 	if ourpath != cosgo.PostKey {
 		log.Println("Key Mismatch. ", r.UserAgent(), r.RemoteAddr, r.RequestURI+"\n")
 		fmt.Fprintln(rw, "<html><p>What are we doing here? If you waited too long to send the form, try again. <a href=\"/\">Go back</a>?</p></html>")
@@ -275,8 +284,10 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Captcha is correct. POST key is correct.
-	log.Printf("User Human: %s at %s", r.UserAgent(), r.RemoteAddr)
-	log.Printf("Key Match:\n\t%s\n\t%s", ourpath, cosgo.PostKey)
+	if *debug {
+		log.Printf("User Human: %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Printf("Key Match:\n\t%s\n\t%s", ourpath, cosgo.PostKey)
+	}
 	r.ParseForm()
 
 	// Given the circumstances, you would think the form is ready.
@@ -516,7 +527,7 @@ func generateAPIKey(n int) string {
 
 //openLogFile switches the log engine to a file, rather than stdout.
 func openLogFile() {
-	f, err := os.OpenFile("./cosgo.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile(*logpath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		log.Printf("error opening file: %v", err)
 		log.Fatal("Hint: touch ./cosgo.log, or chown/chmod it so that the cosgo process can access it.")
@@ -545,14 +556,16 @@ func loadConfig() bool {
 
 	// Detect seconf file. Create if it doesn't exist.
 	if !seconf.Detect(*custom) {
+		fmt.Println(*custom + " doesn't exist. Do you wish to create it? [Y/n]")
+		seconf.Prompt("")
 		seconf.Create(*custom,
 			"cosgo config generator", // Title
-			"32 bit CSRF Key, can be 1 for auto generated.",
-			"COSGO_KEY: can be 1 for auto generated.\nIf auto-generated, the key will change every time cosgo restarts.\nThis is a spam prevention technique,\nit changes the form's POST end point on startup.",
-			"COSGO_DESTINATION, where SMTP mails will be sent.\n In mailbox mode, COSGO_DESTINATION is where all mail is addressed.\nFor good time, set this to the email address you will be replying from.",
+			"32 bit CSRF Key, Should be 1 for auto generated.\nWill not echo: ",
+			"COSGO_KEY: Should be 1 for auto generated.\nWill not echo: ",
+			"COSGO_DESTINATION, Which email address will you be replying FROM?",
 			"Please select from the following mailbox options. \n\n\t\tmandrill\tsendgrid. \n\nUse 0 for local mailbox mode.",
-			"pass MANDRILL_KEY, can be 0 if local or sendgrid.",
-			"pass SENDGRID_KEY, can be 0 if local or mandrill.")
+			"MANDRILL_KEY, use 0 if local or sendgrid.",
+			"SENDGRID_KEY, use 0 if local or mandrill.")
 	}
 
 	// Now that a config file exists, unlock it.
@@ -655,7 +668,7 @@ func quickSelfTest() (err error) {
 			// Mailbox mode chosen. We aren't really sending any mail so we don't need a real email address to send it to.
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
 			if cosgoDestination == "" {
-				log.Println("Boot: COSGO_DESTINATION not set. Using user@example.com")
+				log.Println("Info: COSGO_DESTINATION not set. Using user@example.com")
 				log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
 			}
 		}
@@ -744,12 +757,14 @@ func main() {
 
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// There should be a copy of the MIT license bundled with this software.
-	fmt.Println(logo)
-	fmt.Printf("\n\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and a local mbox feature.\n\n")
-
+	if *quiet == false {
+		fmt.Println(logo)
+		fmt.Printf("\n\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and a local mbox feature.\n\n")
+	}
 	// Future: dont use flags pkg
 	flag.Parse()
 	args := flag.Args()
+
 	if len(args) > 1 {
 		usage()
 		os.Exit(1)
@@ -775,13 +790,19 @@ func main() {
 		if *custom == "default" {
 			*custom = "cosgo"
 		}
-		fmt.Println("Boot: Reading config file...")
+
+		fmt.Println("Boot: Reading config file..." + *custom)
+
 		if !loadConfig() {
 			fmt.Println("Fatal: Can't load configuration file.")
 			os.Exit(1)
 		} else {
 			fmt.Printf("done.")
 		}
+	}
+
+	if os.Getenv("cosgopages") != "" {
+		custompages = os.Getenv("cosgopages")
 	}
 
 	// // If user is still using CASGO_DESTINATION or CASGO_API_KEY (instead of COSGO)
@@ -809,9 +830,13 @@ func main() {
 		// Internal cron!!!
 		go func() {
 			for {
-				log.Println("Info: Generating Random POST Key...")
+				if !*quiet {
+					log.Println("Info: Generating Random POST Key...")
+				}
 				cosgo.PostKey = generateAPIKey(40)
-				log.Printf("Info: POST Key is " + cosgo.PostKey + "\n")
+				if *debug {
+					log.Printf("Info: POST Key is " + cosgo.PostKey + "\n")
+				}
 				time.Sleep(cosgoRefresh)
 			}
 		}()
@@ -859,6 +884,9 @@ func main() {
 		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
 		r.Methods("GET").Path("/files/{whatever}").Handler(sf)
+
+		r.Methods("GET").Path("/" + custompages + "/{whatever}.html").Handler(s)
+		r.Methods("GET").Path("/" + custompages + "/{dir}/{whatever}.html").Handler(s)
 	}
 
 	if *love == true {
@@ -873,13 +901,12 @@ func main() {
 	//End Routing
 
 	// Start Runtime Info
-	fmt.Println("")
 	if *secure == false {
 		log.Println("Warning: Running in *insecure* mode.")
 		log.Println("Hint: Use -secure flag for https only.")
 	}
 	if mailbox == true {
-		log.Println("Mode: mailbox (read with mutt -Rf cosgo.mbox)")
+		log.Println("Info: local mode (read with mutt -Rf cosgo.mbox)")
 		f, err := os.OpenFile("./cosgo.mbox", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			log.Printf("error opening file: %v", err)
@@ -891,18 +918,16 @@ func main() {
 	}
 
 	if *debug == false {
-		log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
-		log.Println("[switching logs to cosgo.log]")
+		log.Println("[switching logs to " + *logpath + "]")
 
 		openLogFile()
 	} else {
 		log.Println("[debug on: logs to stdout]")
 	}
-
-	log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
-
 	// Define listener
-	log.Println("Trying to listen on " + getLink(*fastcgi, *bind, *port))
+	if *debug {
+		log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
+	}
 	oglistener, err := net.Listen("tcp", *bind+":"+*port)
 	if err != nil {
 		log.Println(err)
@@ -913,20 +938,19 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-	log.Printf("Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
-
+	if *debug {
+		log.Printf("Info: Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
+	}
 	boottime := time.Now()
-	// Start Serving!
+	// Start Serving Loop
 	for {
-
 		listener, err = sl.New(oglistener)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		// Start listening in a goroutine
+		// Start listening in a goroutine switch case on *fastcgi and *secure
 		go func() {
-
 			switch *fastcgi {
 			case true:
 				switch *secure {
@@ -977,20 +1001,9 @@ func main() {
 					} else {
 						log.Fatalln("nil listener")
 					}
-					//return
-					//	log.Println("Debug: Looped")
 				}
-				//	log.Println("Debug: Looped22")
 			}
 		}()
-		// select {
-		// case signal := <-stop:
-		// 	fmt.Printf("Got signal:%v\n", signal)
-		// 	listener.Close()
-		// 	listener.Stop()
-		// 	//fmt.Println("Dying")
-		// 	//os.Exit(0)
-		// default:
 
 		select {
 
@@ -998,11 +1011,7 @@ func main() {
 			log.Printf("Uptime: %s", time.Since(boottime))
 			time.Sleep(cosgoRefresh)
 			//Do reload of server here so mux gets the updated routing info
+			// apparently this works great as is
 		}
-		//	log.Println("got it")
-
-		//}
-
 	}
-
 } // end loop
