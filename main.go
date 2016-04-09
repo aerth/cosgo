@@ -147,7 +147,9 @@ var (
 	custom     = flag.String("custom", "default", "Example: cosgo2 ...creates $HOME/.cosgo2")
 	logpath    = flag.String("log", "cosgo.log", "Example: /dev/null or /var/log/cosgo/log")
 	quiet      = flag.Bool("quiet", false, "No output to stdout. For use with cron and -log flag such as: cosgo -quiet -log=/dev/null or cosgo -quiet -log=/var/log/cosgo/log")
-	mailbox    = true
+	nolog      = flag.Bool("nolog", false, "No Output Whatsoever")
+
+	mailbox = true
 )
 
 var logo = `
@@ -263,6 +265,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	// Check POST
 	if r.Method != "POST" {
 		log.Printf("\nNot a POST request... \n\t" + r.RemoteAddr + r.RequestURI + r.UserAgent())
+		fmt.Fprintln(rw, "<html><p>What are we doing here?</p></html>")
 		return
 	}
 
@@ -394,7 +397,6 @@ func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string,
 
 		}
 	}
-	return nil
 }
 
 // sendgridSender always returns success for the visitor. This function needs some work.
@@ -563,7 +565,7 @@ func loadConfig() bool {
 			"32 bit CSRF Key, Should be 1 for auto generated.\nWill not echo: ",
 			"COSGO_KEY: Should be 1 for auto generated.\nWill not echo: ",
 			"COSGO_DESTINATION, Which email address will you be replying FROM?",
-			"Please select from the following mailbox options. \n\n\t\tmandrill\tsendgrid. \n\nUse 0 for local mailbox mode.",
+			"Please select from the following mailbox options. \n\n\t\tmandrill\tsendgrid. \n\nUse 0 for local mailbox mode (manual reply).",
 			"MANDRILL_KEY, use 0 if local or sendgrid.",
 			"SENDGRID_KEY, use 0 if local or mandrill.")
 	}
@@ -668,8 +670,10 @@ func quickSelfTest() (err error) {
 			// Mailbox mode chosen. We aren't really sending any mail so we don't need a real email address to send it to.
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
 			if cosgoDestination == "" {
-				log.Println("Info: COSGO_DESTINATION not set. Using user@example.com")
-				log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
+				if !*quiet {
+					log.Println("Info: COSGO_DESTINATION not set. Using user@example.com")
+					log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
+				}
 			}
 		}
 	}
@@ -738,6 +742,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT)
 	signal.Notify(reload, syscall.SIGHUP)
 	signal.Ignore(syscall.SIGSTOP)
+
 	go func() {
 		select {
 		case signal := <-interrupt:
@@ -757,12 +762,18 @@ func main() {
 
 	// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
 	// There should be a copy of the MIT license bundled with this software.
-	if *quiet == false {
-		fmt.Println(logo)
-		fmt.Printf("\n\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and a local mbox feature.\n\n")
-	}
+
 	// Future: dont use flags pkg
 	flag.Parse()
+	if *nolog {
+		*quiet = true
+		*logpath = "/dev/null" // fix for windows soon
+	}
+
+	if !*quiet {
+		//fmt.Println(logo)
+		fmt.Printf("\n\tcosgo v0.5\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n\tNow with Sendgrid, seconf, and a local mbox feature.\n\n")
+	}
 	args := flag.Args()
 
 	if len(args) > 1 {
@@ -834,7 +845,7 @@ func main() {
 					log.Println("Info: Generating Random POST Key...")
 				}
 				cosgo.PostKey = generateAPIKey(40)
-				if *debug {
+				if *debug && !*quiet {
 					log.Printf("Info: POST Key is " + cosgo.PostKey + "\n")
 				}
 				time.Sleep(cosgoRefresh)
@@ -901,12 +912,14 @@ func main() {
 	//End Routing
 
 	// Start Runtime Info
-	if *secure == false {
+	if *secure == false && !*quiet {
 		log.Println("Warning: Running in *insecure* mode.")
 		log.Println("Hint: Use -secure flag for https only.")
 	}
 	if mailbox == true {
-		log.Println("Info: local mode (read with mutt -Rf cosgo.mbox)")
+		if !*quiet {
+			log.Println("Info: local mode (read with mutt -Rf cosgo.mbox)")
+		}
 		f, err := os.OpenFile("./cosgo.mbox", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			log.Printf("error opening file: %v", err)
@@ -918,14 +931,17 @@ func main() {
 	}
 
 	if *debug == false {
-		log.Println("[switching logs to " + *logpath + "]")
-
+		if !*quiet {
+			log.Println("[switching logs to " + *logpath + "]")
+		}
 		openLogFile()
 	} else {
-		log.Println("[debug on: logs to stdout]")
+		if !*quiet {
+			log.Println("[debug on: logs to stdout]")
+		}
 	}
 	// Define listener
-	if *debug {
+	if *debug && !*quiet {
 		log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
 	}
 	oglistener, err := net.Listen("tcp", *bind+":"+*port)
@@ -938,7 +954,7 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-	if *debug {
+	if *debug && !*quiet {
 		log.Printf("Info: Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
 	}
 	boottime := time.Now()
@@ -959,8 +975,8 @@ func main() {
 						go fcgi.Serve(listener,
 							csrf.Protect(antiCSRFkey,
 								csrf.HttpOnly(true),
-								csrf.FieldName("cosgo-token"),
-								csrf.CookieName("cosgo-cookie"),
+								csrf.FieldName("cosgo"),
+								csrf.CookieName("cosgo"),
 								csrf.Secure(false))(r))
 					} else {
 						log.Fatalln("nil listener")
@@ -970,8 +986,8 @@ func main() {
 						go fcgi.Serve(listener,
 							csrf.Protect(antiCSRFkey,
 								csrf.HttpOnly(true),
-								csrf.FieldName("cosgo-token"),
-								csrf.CookieName("cosgo-cookie"),
+								csrf.FieldName("cosgo"),
+								csrf.CookieName("cosgo"),
 								csrf.Secure(true))(r))
 					} else {
 						log.Fatalln("nil listener")
@@ -984,9 +1000,8 @@ func main() {
 						go http.Serve(listener,
 							csrf.Protect(antiCSRFkey,
 								csrf.HttpOnly(true),
-								csrf.FieldName("cosgo-token"),
-								csrf.CookieName("cosgo-cookie"),
-								csrf.Secure(true))(r))
+								csrf.FieldName("cosgo"),
+								csrf.CookieName("cosgo"), csrf.Secure(true))(r))
 					} else {
 						log.Fatalln("nil listener")
 					}
@@ -995,8 +1010,8 @@ func main() {
 						go http.Serve(listener,
 							csrf.Protect(antiCSRFkey,
 								csrf.HttpOnly(true),
-								csrf.FieldName("cosgo-token"),
-								csrf.CookieName("cosgo-cookie"),
+								csrf.FieldName("cosgo"),
+								csrf.CookieName("cosgo"),
 								csrf.Secure(false))(r))
 					} else {
 						log.Fatalln("nil listener")
