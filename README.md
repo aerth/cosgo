@@ -4,10 +4,10 @@ when all you needed was a contact form, anyways.
 
 * Contact form saves messages to a local mbox file, or sends mail with Sendgrid for free. Mandrill option.
 * Uses Go style templates, `templates/index.html` and `templates/error.html`
-* ...while serving /static/* files, /favicon.ico, /robots.txt.
-* You can stuff things in /files/ and cosgo will serve them, too.
+* ...while serving /static/* files, /favicon.ico, /robots.txt. Limited to .woff, .ttf, .css, .js .png .jpg
+* You can stuff .zip, .tgz. .tar, .tar.gz files in /files/ and cosgo will serve them, too.
 * Tested on NetBSD and Debian servers, even runs on Windows. Probably runs great on anything else, too.
-* Contact the author using **cosgo** right now. https://isupon.us
+* This needs some testing! If you use cosgo, I would love to hear from you! https://isupon.us
 
 ```
 
@@ -32,12 +32,12 @@ export GOPATH=/tmp/cosgo
 go get -v -u github.com/aerth/cosgo
 cd $GOPATH/src/github.com/aerth/cosgo
 go build
-./cosgo -h
+./cosgo -h # list flags
 ./cosgo -config # Creates the config
 ./cosgo -config -debug &
 firefox http://127.0.0.1:8080 # Check it out.
 
-Should return error, because we don't accept POST without the CSRF token:
+This curl request hould return an error, because we don't accept POST without the CSRF token:
 curl --data /tmp/cosgo.gif http://127.0.0.1:8080/upload
 
 ```
@@ -52,8 +52,10 @@ Upload your static .css .js .png .jpeg .woff and .tff files in ./static/ like /s
 
 Modify your theme if it looks in /assets/.
 
-cp favicon into static too. it well be served at /favicon.ico
+cp favicon into static too. it well be served as if it were located at /favicon.ico
 cp robot.txt into static too. it well be served at /robots.txt
+
+### Template Rules:
 
 Make sure your template starts with `{{define "Index"}}`
 Make sure your template ends with `{{end}}`
@@ -61,18 +63,23 @@ Make sure your template ends with `{{end}}`
 
 ## Upgrading
 
-Open up script/upgrade in $EDITOR
-Modify to suit your needs
+To update the running instances I have been running something like this:
 
 ```
-$EDITOR script/*
+#!/bin/sh
 
-mv script/launch /usr/local/bin/cosgo-launch
-mv script/upgrade /usr/local/bin/cosgo-upgrade
+# since i run this with sudo -u cosgo, and cosgo runs as unprivileged demon user...
+# you have to modify this! Keep the $USER variables here if you place it in a @reboot cron.
+
+# I use -9 to make sure that thing is dead
+# And since multiple cosgo instances are running, I don't want to kill the wrong user's process.# Run it "quiet" so cron doesn't complain. cosgo.log will still be updated.
+# If you are using docker or something and you want it all in stdout, just use -debug
+# -insecure is no longer needed or supported. it is now default. 
+# Check the new flags before deploying
+
+pkill -9 -u $USER cosgo || true; /demon/$USER/cosgo -quiet -port 8080 -bind 0.0.0.0
+
 ```
-
-## Cron
-
 
 ```cron
 
@@ -82,11 +89,7 @@ COSGO_DESTINATION=your@email.com
 
 COSGOPORT=8080
 
-*/30 * * * * /usr/bin/pkill -u $USER cosgo;/demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT > /dev/null 2>&1
-
-20 4 * * * /usr/bin/pkill -u $USER cosgo;/demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT > /dev/null 2>&1
-
-@reboot /demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT> /dev/null 2>&1
+@reboot /demon/$USER/cosgo -fastcgi -port $COSGOPORT> /dev/null 2>&1
 
 ```
 
@@ -99,7 +102,7 @@ server {
 
         location / {
 
-        proxy_pass http://127.0.0.1:8081; # Change to your static site's port
+        proxy_pass http://127.0.0.1:8080; # Change to your static site's port
 
         }
 
@@ -116,15 +119,17 @@ server {
 
         location / {
 
-        fastcgi_pass 127.0.0.1:8080;
+        fastcgi_pass 127.0.0.1:8080; # no http:// with fastcgi
         include $fastcgi_params;
         }
 
 }
 
 ```
+
 More code examples at https://github.com/aerth/cosgo/wiki
-Please add your use case. It could make cosgo better.
+
+Please add your use case. It could make cosgo better. Report any bugs or feature requests directly at https://isupon.us ( running casgo with a pixelarity theme )
 
 # Historical Information
 
