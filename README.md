@@ -74,21 +74,18 @@ mv script/upgrade /usr/local/bin/cosgo-upgrade
 ## Cron
 
 
-```shell
+```cron
 
-###################
-## Be sure to copy the templates and static folders to where your binary will exist.
-##################
-## Sample Cron
-
-
-```
-#MANDRILL_KEY=yourK3YgoesH3R3 Not using mandrill anymore, but option exists.
 COSGO_DESTINATION=your@email.com
+
 #COSGO_API_KEY=contact
+
 COSGOPORT=8080
+
 */30 * * * * /usr/bin/pkill -u $USER cosgo;/demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT > /dev/null 2>&1
+
 20 4 * * * /usr/bin/pkill -u $USER cosgo;/demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT > /dev/null 2>&1
+
 @reboot /demon/$USER/cosgo -insecure -fastcgi -port $COSGOPORT> /dev/null 2>&1
 
 ```
