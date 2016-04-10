@@ -1,1 +1,1 @@
-web: cosgo -insecure -debug -port=$PORT
+web: cosgo -quiet -debug -port=$PORT

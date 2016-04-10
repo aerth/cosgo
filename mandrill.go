@@ -2,12 +2,18 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/csrf"
+	"github.com/goware/emailx"
 	mandrill "github.com/keighl/mandrill"
 )
 
@@ -74,4 +80,55 @@ func sendMandrill(destinationEmail string, form *Form) bool {
 		}
 	}
 	return true
+}
+
+// mandrillSender always returns success for the visitor. This function needs some work.
+func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
+	form := parseQuery(query)
+	//Validate user submitted email address
+	err = emailx.Validate(form.Email)
+	if err != nil {
+		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
+
+		if err == emailx.ErrInvalidFormat {
+			fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
+		}
+		if err == emailx.ErrUnresolvableHost {
+			fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
+		}
+	}
+	//Normalize email address
+	form.Email = emailx.Normalize(form.Email)
+	//Is it empty?
+	if form.Email == "" || form.Email == "@" {
+		http.Redirect(rw, r, "/", 301)
+		return errors.New("Blank Email")
+	}
+
+	if sendMandrill(destination, form) {
+		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		return nil
+	} else {
+		log.Printf("FAIL-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Printf("debug: %s to mandrill %s", form, destination)
+		log.Printf("debug: %s to mandrill %s", form.Message, destination)
+
+		t, err := template.New("Error").ParseFiles("./templates/error.html")
+		if err == nil {
+			data := map[string]interface{}{
+				"err":            "Mail System",
+				"Key":            getKey(),
+				csrf.TemplateTag: csrf.TemplateField(r),
+			}
+			t.ExecuteTemplate(rw, "Error", data)
+			return err
+		} else {
+			log.Printf("template error: %s at %s", r.UserAgent(), r.RemoteAddr)
+			log.Println(err)
+			http.Redirect(rw, r, "/", 301)
+			return errors.New("error.html template error.")
+
+		}
+	}
 }
