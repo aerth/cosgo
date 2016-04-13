@@ -54,7 +54,7 @@ func quickSelfTest() (err error) {
 			// Mailbox mode chosen. We aren't really sending any mail so we don't need a real email address to send it to.
 			cosgoDestination = os.Getenv("COSGO_DESTINATION")
 			if cosgoDestination == "" {
-				if !*quiet {
+				if !*quiet && !*debug {
 					log.Println("Info: COSGO_DESTINATION not set. Using user@example.com")
 					log.Println("Hint: export COSGO_DESTINATION=\"your@email.com\"")
 				}
@@ -75,14 +75,6 @@ func quickSelfTest() (err error) {
 		log.Println("Fatal: Template Error:", err)
 		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
 	}
-
-	//
-	// // Unstyled form
-	// _, err = template.New("Contact").ParseFiles("./templates/form.html")
-	// if err != nil {
-	// 	log.Println("Fatal: Template Error:", err)
-	// 	log.Fatal("\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location of your binary.")
-	// }
 	return nil
 }
 
@@ -111,22 +103,38 @@ func getLink(fastcgi bool, showbind string, port string) string {
 
 }
 
-const autogen = "1"
+func detectConfig() bool {
 
+	// Detect seconf file. Create if it doesn't exist.
+	if !seconf.Detect(*custom) {
+		fmt.Println("Config file: " + seconf.Locate(*custom) + " doesn't exist.")
+		return false
+	}
+	return true
+}
 func loadConfig() bool {
 
 	// Detect seconf file. Create if it doesn't exist.
 	if !seconf.Detect(*custom) {
-		fmt.Println(*custom + " doesn't exist. Do you wish to create it? [Y/n]")
-		seconf.Prompt("")
+		fmt.Println("Config file: " + seconf.Locate(*custom) + " doesn't exist.")
+		conf := seconf.ConfirmChoice("Create it?", true)
+		if !conf {
+			fmt.Println(conf)
+			os.Exit(1)
+		}
+		fmt.Println("Creating config at " + seconf.Locate(*custom) + ". Don't exit during this.")
 		seconf.Create(*custom,
-			"cosgo config generator", // Title
-			"32 bit CSRF Key, Should be 1 for auto generated.\nWill not echo: ",
-			"COSGO_KEY: Should be 1 for auto generated.\nWill not echo: ",
-			"COSGO_DESTINATION, Which email address will you be replying FROM?",
-			"Please select from the following mailbox options. \n\n\t\tmandrill\tsendgrid. \n\nUse 0 for local mailbox mode (manual reply).",
-			"MANDRILL_KEY, use 0 if local or sendgrid.",
-			"SENDGRID_KEY, use 0 if local or mandrill.")
+			"\n[cosgo config generator]", // Title
+			"\n32 bit CSRF Key, Press ENTER for autogen.( not recommended )\nWill not echo: ",
+			"\nCOSGO_KEY: Press ENTER for autogen.( recommended )\nWill not echo: ",
+			"\nCOSGO_DESTINATION, Press ENTER for cosgo@localhost",
+			"\nPlease select from the following mailbox options. \n\n\t\tmandrill\tsendgrid. \n\nPress ENTER for local mailbox mode (manual reply).",
+			"\nMANDRILL_KEY, Press ENTER for local or sendgrid.",
+			"\nSENDGRID_KEY, Press ENTER for local or mandrill.",
+			"\nWhich port to listen on? Press ENTER for 8080",
+			"\nWhich file to use for logs? Press ENTER for cosgo.log",
+			"\nWhich interface to listen on? Press ENTER for 0.0.0.0 ( all interfaces )",
+			"\nAccept insecure cookie transmission? Press ENTER for yes")
 	}
 
 	// Now that a config file exists, unlock it.
@@ -138,10 +146,13 @@ func loadConfig() bool {
 	}
 	configarray := strings.Split(configdecoded, "::::")
 
-	// Cosgo 0.5 uses new config file!
-	if len(configarray) < 5 {
-		fmt.Println("Broken config file. Create a new one.")
-		return false
+	// Cosgo 0.6 uses new config file!
+	if len(configarray) < 7 {
+		fmt.Println("Broken config file. Create a new one. This happens when updating cosgo version.")
+		if seconf.ConfirmChoice("Would you like to delete it? "+seconf.Locate(*custom), true) {
+			seconf.Destroy(*custom)
+		}
+		return loadConfig()
 	}
 	if err != nil {
 		fmt.Println(err)
@@ -153,40 +164,63 @@ func loadConfig() bool {
 	*mailmode = configarray[3]
 	mandrillKey = configarray[4]
 	sendgridKey = configarray[5]
+	*port = configarray[6]
+	*bind = configarray[7]
+	if configarray[8] != "" {
+		*logpath = configarray[8]
+	}
+	if configarray[9] == "no" {
+		*secure = true
+	}
 
-	if configarray[0] == autogen {
+	if configarray[0] == "" {
 		antiCSRFkey = []byte("LI80POC1xcT01jmQBsEyxyrDCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	}
 
-	if cosgo.PostKey == autogen {
+	if cosgo.PostKey == "" {
 		cosgo.PostKey = ""
 	}
 
-	if cosgoDestination == autogen {
+	if cosgoDestination == "" {
 		cosgoDestination = "user@example.com"
 	}
 
-	if configarray[3] == "0" {
+	if configarray[3] == "" {
 		*mailmode = localmail
 	}
 
-	if configarray[3] == "0" {
+	if configarray[3] == "" {
 		mandrillKey = ""
 	}
-	if configarray[4] == "0" {
+	if configarray[4] == "" {
 		sendgridKey = ""
 	}
-
-	switch *mailmode {
-	case localmail:
-		log.Println("Saving mail (cosgo.mbox) addressed to " + cosgoDestination)
-	case smtpmandrill:
-		log.Println("Sending via Mandrill to " + cosgoDestination)
-	case smtpsendgrid:
-		log.Println("Sending via Sendgrid to " + cosgoDestination)
-	default:
-		log.Fatalln("No mailmode.")
+	if *bind == "" {
+		*bind = "0.0.0.0"
 	}
+	if *bind == "local" {
+		*bind = "127.0.0.1"
+	}
+	if *port == "" {
+		*port = "8080"
+	}
+
+	// switch *mailmode {
+	// case localmail:
+	// 	if !*quiet && *debug {
+	// 		log.Println("Saving mail (cosgo.mbox) addressed to " + cosgoDestination)
+	// 	}
+	// case smtpmandrill:
+	// 	if !*quiet && *debug {
+	// 		log.Println("Sending via Mandrill to " + cosgoDestination)
+	// 	}
+	// case smtpsendgrid:
+	// 	if !*quiet && *debug {
+	// 		log.Println("Sending via Sendgrid to " + cosgoDestination)
+	// 	}
+	// default:
+	// 	log.Fatalln("No mailmode.")
+	// }
 
 	return true
 }
@@ -196,7 +230,7 @@ func openLogFile() {
 	f, err := os.OpenFile(*logpath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		log.Printf("error opening file: %v", err)
-		log.Fatal("Hint: touch ./cosgo.log, or chown/chmod it so that the cosgo process can access it.")
+		log.Fatal("Hint: touch " + *logpath + ", or chown/chmod it so that the cosgo process can access it.")
 		os.Exit(1)
 	}
 	log.SetOutput(f)

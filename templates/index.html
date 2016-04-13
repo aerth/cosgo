@@ -1,5 +1,8 @@
 {{define "Index"}}
 <!DOCTYPE html>
+<!--
+These template comments don't show up in the served page.
+-->
 <html>
 <head>
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
@@ -9,6 +12,8 @@
   <h1>cosgo</h1>
   <h2>contact form server</h2>
 <a name="contact"></a>
+
+{{if .Status }}<p style="color: purple;">{{.Status}}</p>{{end}}
 <form id="contact-form" action="/{{.Key}}/send" method="POST">
     <label>Email: <input type="text" name="email" placeholder="you@yours.com" required/></label><br/>
     <label>Subject: <input type="text" name="subject" placeholder="what a cool contact form"/><br/>
@@ -16,12 +21,12 @@
     {{ .csrfField }}
 
 
-    <p><img id=image src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
+    <p><img id="image" src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
 
     <a href="#contact" onclick="reload()">Reload Code</a> | <a href="#" onclick="playAudio()">Play Audio</a>
     <br>
 
-    <audio id=audio controls style="display:none;text-align:center;" src="/captcha/{{.CaptchaId}}.wav" preload=none>
+    <audio id="audio" controls style="display:none;text-align:center;" src="/captcha/{{.CaptchaId}}.wav" preload=none>
       You are using a text-based browser. The audio captcha will not play here.
       <a href="/captcha/download/{{.CaptchaId}}.wav">Download file</a> to play it in the external player.
     </audio>
@@ -30,13 +35,15 @@
 
     <input id="contact-submit" type="submit" value="Say hello!" />
 </form>
+{{if .Pages}}<p>Now with: <a target="_parent" href="{{.PagePath}}/demo.html">custom pages!</a></p>{{end}}
 
-<pre style="text-align: left; position: absolute; bottom: 0px; left: 10px;">
+<pre style="text-align: left; position: static; bottom: 0px; left: 10px;">
 debug: {{.Key}}
 time: {{.Now}}
+counter: {{.Hits}}
 </pre>
 
-<pre style="text-align: right; position: absolute; bottom: 0px; right: 10px;">
+<pre style="text-align: right; position: static; bottom: 0px; right: 10px;">
 source code: https://github.com/aerth/cosgo
 </pre>
 <script>
@@ -51,10 +58,10 @@ function setSrcQuery(e, q) {
   e.src = src + "?" + q
 }
 function playAudio() {
-  var le = document.getElementById("lang");
-  var lang = le.options[le.selectedIndex].value;
+  //var le = "en";
+  //var lang = le.options[le.selectedIndex].value;
   var e = document.getElementById('audio')
-  setSrcQuery(e, "lang=" + lang)
+  //setSrcQuery(e, "lang=" + lang)
   e.style.display = 'inline';
   e.autoplay = 'true';
   return false;

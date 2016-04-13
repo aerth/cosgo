@@ -1,10 +1,9 @@
 ## cosgo
 when all you needed was a contact form, anyways.
 
-
-* Contact form saves messages to a local mbox file, or sends mail with Sendgrid for free. Mandrill option.
-* Uses Go style templates, `templates/index.html` and `templates/error.html`
-* ...while serving /static/* files, /favicon.ico, /robots.txt. Limited to .woff, .ttf, .css, .js .png .jpg
+* Mailing: Contact form saves messages to a local mbox file, or sends mail with Sendgrid for free. Mandrill option.
+* Customize: Uses Go style templates, `templates/index.html` and `templates/error.html`
+* Static Files: /sitemap.xml /favicon.ico, /robots.txt. Limited to .woff, .ttf, .css, .js .png .jpg
 * You can stuff .zip, .tgz. .tar, .tar.gz files in /files/ and cosgo will serve them, too.
 * Tested on NetBSD and Debian servers, even runs on Windows. Probably runs great on anything else, too.
 * This needs some testing! If you use cosgo, I would love to hear from you! https://isupon.us
@@ -22,6 +21,20 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ```
+
+## Usage
+
+```
+cosgo # serve contact form in local mbox mode
+cosgo -noredirect # show 404 pages instead of redirecting to /
+cosgo -debug # don't switch to cosgo.log
+cosgo -static=false # don't serve /static, /files or /page
+cosgo -custom "cosgo3" -port 8080 -bind 192.16.1.10
+
+```
+
+
+
 
 ## Installation
 
@@ -74,7 +87,7 @@ To update the running instances I have been running something like this:
 # I use -9 to make sure that thing is dead
 # And since multiple cosgo instances are running, I don't want to kill the wrong user's process.# Run it "quiet" so cron doesn't complain. cosgo.log will still be updated.
 # If you are using docker or something and you want it all in stdout, just use -debug
-# -insecure is no longer needed or supported. it is now default. 
+# -insecure is no longer needed or supported. it is now default.
 # Check the new flags before deploying
 
 pkill -9 -u $USER cosgo || true; /demon/$USER/cosgo -quiet -port 8080 -bind 0.0.0.0

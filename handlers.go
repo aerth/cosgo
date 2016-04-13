@@ -16,16 +16,58 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-// homeHandler parses the ./templates/index.html template file.
+// homeHandler parses the ./templates/index.html template file. (or /templates/form.html)
 // This returns a web page with a themeable form, captcha, CSRF token, and the cosgo API key to send the message.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	if *debug {
+	hitcounter = hitcounter + 1
+	if !*quiet {
 		log.Printf("Visitor: %s %s %s %s", r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
+	}
+
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	status := ""
+	reason := ""
+
+	if query.Get("status") != "" {
+		if query["status"][0] == "1" {
+			status = "Thanks! Your message was sent."
+		}
+	}
+	if query.Get("r") != "" {
+		if query["status"][0] == "0" {
+			switch query["r"][0] {
+			default:
+				reason = "Error."
+			case "1":
+				reason = "Bad method."
+			case "2":
+				reason = "Bad endpoint."
+			case "3":
+				reason = "Bad capcha."
+			case "4":
+				reason = "Bad email address."
+
+			case "5":
+				reason = "Bad message."
+
+			case "6":
+				reason = "Bad error?"
+			}
+			status = "Your message was not sent: " + reason
+		}
 	}
 	thyme := time.Now()
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
-	t, err := template.New("Index").ParseFiles("./templates/index.html")
-	if err != nil {
+
+	t, templateerr := template.New("Index").ParseFiles("./templates/index.html")
+	if !*form {
+		t, templateerr = template.New("Index").ParseFiles("./templates/index.html")
+	}
+	if templateerr != nil {
 		// Do Something
 		log.Println("Almost fatal: Cant load index.html template!")
 		log.Println(err)
@@ -33,6 +75,10 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		data := map[string]interface{}{
 			"Now":            nowtime,
+			"Status":         status,
+			"Pages":          *pages,
+			"PagePath":       *custompages,
+			"Hits":           hitcounter,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
@@ -120,7 +166,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	// Check POST
 	if r.Method != "POST" {
 		log.Printf("\nNot a POST request... \n\t" + r.RemoteAddr + r.RequestURI + r.UserAgent())
-		fmt.Fprintln(rw, "<html><p>What are we doing here?</p></html>")
+		http.Redirect(rw, r, "/?status=0&r=1#contact", http.StatusFound)
 		return
 	}
 
@@ -130,14 +176,14 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	if ourpath != cosgo.PostKey {
 		log.Println("Key Mismatch. ", r.UserAgent(), r.RemoteAddr, r.RequestURI+"\n")
-		fmt.Fprintln(rw, "<html><p>What are we doing here? If you waited too long to send the form, try again. <a href=\"/\">Go back</a>?</p></html>")
+		http.Redirect(rw, r, "/?status=0&r=2#contact", http.StatusFound)
 		return
 	}
 
 	// Method is POST, URL KEY is correct. Check CAPTCHA.
 	if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
-		fmt.Fprintln(rw, "<html><p>You may be a robot! Please go <a href=\"/\">back</a> and try again!</p></html>")
 		log.Printf("User Error: CAPTCHA %s at %s", r.UserAgent(), r.RemoteAddr)
+		http.Redirect(rw, r, "/?status=0&r=3#contact", http.StatusFound)
 		return
 	}
 
@@ -150,34 +196,40 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 
 	// Given the circumstances, you would think the form is ready.
 	query = r.Form
-
+	form := parseQuery(query)
+	if form.Email == "@" || form.Email == " " || !strings.ContainsAny(form.Email, "@") || !strings.ContainsAny(form.Email, ".") {
+		http.Redirect(rw, r, "/?status=0&r=4#contact ", http.StatusFound)
+		return
+	}
 	// Switch mailmode and send it out! Success message may change/be customized in the future.
 	switch *mailmode {
 	case smtpmandrill:
 		mandrillSender(rw, r, destination, query)
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		http.Redirect(rw, r, "/?status=1", http.StatusFound)
 		return
 
 	case smtpsendgrid:
 		err = sendgridSender(rw, r, destination, query)
 		if err != nil {
 			log.Printf("FAILURE-contact: %s at %s\n\t%s", r.UserAgent(), r.RemoteAddr, query)
-			fmt.Fprintln(rw, "<html><p>Thanks! But your email was not sent. Would you like to go <a href=\"/\">back</a>?</p></html>")
+			http.Redirect(rw, r, "/?status=0&r=5#contact ", http.StatusFound)
 			return
 		}
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		rw.Header().Add("status", "success")
+		homeHandler(rw, r)
 		return
 	default:
 		err = mbox.Save(rw, r, destination, query)
 		if err != nil {
-			log.Printf("FAILURE-contact: %s at %s\n\t%s", r.UserAgent(), r.RemoteAddr, query)
-			fmt.Fprintln(rw, "<html><p>Your email was not sent. Would you like to go <a href=\"/\">back</a>?</p></html>")
+			log.Printf("FAILURE-contact: %s at %s\n\t%s %s", r.UserAgent(), r.RemoteAddr, query, err.Error())
+			http.Redirect(rw, r, "/?status=0&r=5#contact", http.StatusFound)
+
 			return
 		}
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
-		fmt.Fprintln(rw, "<html><p>Thanks! Would you like to go <a href=\"/\">back</a>?</p></html>")
+		http.Redirect(rw, r, "/?status=1", http.StatusFound)
 		return
 
 	}
@@ -187,6 +239,6 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 // serverSingle just shows one file.
 func serveSingle(pattern string, filename string) {
 	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filename)
+		http.ServeContent(w, r, filename, time.Now(), nil)
 	})
 }

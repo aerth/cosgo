@@ -1,2 +1,0 @@
-#!/bin/sh
-pkill -9 cosgo || true && go build && ./cosgo -debug

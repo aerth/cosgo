@@ -19,7 +19,9 @@ type Form struct {
 	Name, Email, Subject, Message string
 }
 
-var Destination = "cosgo@localhost"
+// Level should be set to something other than 1 to resolve and check email addresses
+var Level = 1
+var Destination = "mbox@localhost"
 var (
 	Mail *log.Logger // local mbox
 )
@@ -28,23 +30,26 @@ var (
 func Save(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
 	form := parseQuery(query)
 	t := time.Now()
-	if form.Email == "@" {
-		return errors.New("Blank email.")
+	if form.Email == "@" || form.Email == " " || !strings.ContainsAny(form.Email, "@") || !strings.ContainsAny(form.Email, ".") {
+		return errors.New("Bad email address.")
 	}
-	err := emailx.Validate(form.Email)
-	if err != nil {
-		if err == emailx.ErrInvalidFormat {
-			fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
-			return errors.New("Email is not valid format.")
+	if Level != 1 {
+		err := emailx.Validate(form.Email)
+		if err != nil {
+			if err == emailx.ErrInvalidFormat {
+				fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
+				return errors.New("Email is not valid format.")
+			}
+
+			if err == emailx.ErrUnresolvableHost {
+				fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
+				return errors.New("Email is not valid format.")
+			}
+
+			fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
+			return errors.New("Email is not valid format." + err.Error())
+
 		}
-		// // This is a tough decision to implement.
-		// 	if err == emailx.ErrUnresolvableHost {
-		// 		fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
-		// 		return errors.New("Email is not valid format.")
-		// 	}
-		//
-		fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
-		return errors.New("Email is not valid format.")
 	}
 	//Normalize email address
 	form.Email = emailx.Normalize(form.Email)
@@ -64,37 +69,35 @@ func Save(rw http.ResponseWriter, r *http.Request, destination string, query url
 }
 
 func parseQuery(query url.Values) *Form {
-	p := bluemonday.UGCPolicy()
+	p := bluemonday.StrictPolicy()
 	form := new(Form)
 	additionalFields := ""
 	for k, v := range query {
 		k = strings.ToLower(k)
-		if k == "email" {
+		if k == "email" || k == "name" {
 			form.Email = v[0]
-			fmt.Println(form.Email)
-			//} else if (k == "name") {
-			//	form.Name = v[0]
+			form.Email = p.Sanitize(form.Email)
 		} else if k == "subject" {
 			form.Subject = v[0]
 			form.Subject = p.Sanitize(form.Subject)
 		} else if k == "message" {
 			form.Message = k + ": " + v[0] + "<br>\n"
 			form.Message = p.Sanitize(form.Message)
-		} else {
+		} else if k != "cosgo" && k != "captchaid" && k != "captchasolution" {
 			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
 		}
 	}
-	if form.Subject == "" {
+	if form.Subject == "" || form.Subject == " " {
 		form.Subject = "[New Message]"
 	}
 	if additionalFields != "" {
-		/*if form.Message == "" {
-			//form.Message = form.Message + "Message:\n<br>" + additionalFields
-			form.Message = form.Message
+		if form.Message == "" {
+			form.Message = form.Message + "Message:\n<br>" + additionalFields
+			//form.Message = form.Message
 		} else {
-			//form.Message = form.Message + "\n<br>Additional:\n<br>" + additionalFields
-			form.Message = form.Message
-		}*/
+			form.Message = form.Message + "\n<br>Additional:\n<br>" + additionalFields
+			//form.Message = form.Message
+		}
 	}
 	return form
 }
