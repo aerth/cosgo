@@ -3,3 +3,6 @@
 *~
 *.mbox
 cosgo
+cosgo.exe
+files/*
+page/*
