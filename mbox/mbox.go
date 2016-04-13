@@ -1,12 +1,35 @@
 // Package mbox saves a form to a local .mbox file
+
+// The MIT License (MIT)
+//
+// Copyright (c) 2016 aerth
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 package mbox
 
 import (
 	"errors"
-	"fmt"
 	"log"
-	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -19,53 +42,35 @@ type Form struct {
 	Name, Email, Subject, Message string
 }
 
-// Level should be set to something other than 1 to resolve and check email addresses
-var Level = 1
+// ValidationLevel should be set to something other than 1 to resolve and check email addresses
+var ValidationLevel = 1
+
+// Destination is the address where mail is "sent", its useful to change this to the address you will be replying to.
 var Destination = "mbox@localhost"
 var (
 	Mail *log.Logger // local mbox
 )
 
-// Save saves an mbox file from a submitted query! Epic!
-func Save(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
-	form := parseQuery(query)
-	t := time.Now()
-	if form.Email == "@" || form.Email == " " || !strings.ContainsAny(form.Email, "@") || !strings.ContainsAny(form.Email, ".") {
-		return errors.New("Bad email address.")
+// Open sets the logger up and allows an application to customize the mailbox name. ( step 1 )
+func Open(file string) error {
+
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		log.Printf("error opening file: %v", err)
+		log.Fatal("Hint: touch " + file + ", or chown/chmod it so that the cosgo process can access it.")
+		os.Exit(1)
 	}
-	if Level != 1 {
-		err := emailx.Validate(form.Email)
-		if err != nil {
-			if err == emailx.ErrInvalidFormat {
-				fmt.Fprintln(rw, "<html><p>Email is not valid format.</p></html>")
-				return errors.New("Email is not valid format.")
-			}
 
-			if err == emailx.ErrUnresolvableHost {
-				fmt.Fprintln(rw, "<html><p>We don't recognize that email provider.</p></html>")
-				return errors.New("Email is not valid format.")
-			}
-
-			fmt.Fprintln(rw, "<html><p>Email is not valid. Would you like to go <a href=\"/\">back</a>?</p></html>")
-			return errors.New("Email is not valid format." + err.Error())
-
-		}
-	}
-	//Normalize email address
-	form.Email = emailx.Normalize(form.Email)
-	// mbox files use two different date formats apparently.
-	mailtime := t.Format("Mon Jan 2 15:04:05 2006")
-	mailtime2 := t.Format("Mon, 2 Jan 2006 15:04:05 -0700")
-	Mail.Println("From " + form.Email + " " + mailtime)
-	Mail.Println("Return-path: <" + form.Email + ">")
-	Mail.Println("Envelope-to: " + destination)
-	Mail.Println("Delivery-date: " + mailtime2)
-	Mail.Println("To: " + destination)
-	Mail.Println("Subject: " + form.Subject)
-	Mail.Println("From: " + form.Email)
-	Mail.Println("Date: " + mailtime2)
-	Mail.Println("\n" + form.Message + "\n\n")
+	Mail = log.New(f, "", 0)
 	return nil
+}
+
+// Save parses a url submitted query and sends it to Send
+func ParseForm(destination string, query url.Values) (form *Form, err error) {
+	Destination = destination
+	form = parseQuery(query)
+	err = Save(form)
+	return form, err
 }
 
 func parseQuery(query url.Values) *Form {
@@ -93,11 +98,50 @@ func parseQuery(query url.Values) *Form {
 	if additionalFields != "" {
 		if form.Message == "" {
 			form.Message = form.Message + "Message:\n<br>" + additionalFields
-			//form.Message = form.Message
 		} else {
 			form.Message = form.Message + "\n<br>Additional:\n<br>" + additionalFields
-			//form.Message = form.Message
 		}
 	}
 	return form
+}
+
+// Save saves an mbox file from a mbox.Form!
+func Save(form *Form) error {
+
+	t := time.Now()
+	if form.Email == "@" || form.Email == " " || !strings.ContainsAny(form.Email, "@") || !strings.ContainsAny(form.Email, ".") {
+		return errors.New("Blank email address.")
+	}
+	if ValidationLevel != 1 {
+		err := emailx.Validate(form.Email)
+		if err != nil {
+			if err == emailx.ErrInvalidFormat {
+
+				return errors.New("Email is not valid format.")
+			}
+
+			if err == emailx.ErrUnresolvableHost {
+
+				return errors.New("Email is not valid format.")
+			}
+
+			return errors.New("Email is not valid format." + err.Error())
+
+		}
+	}
+	// Normalize email address capitalization
+	form.Email = emailx.Normalize(form.Email)
+	// mbox files use two different date formats apparently.
+	mailtime := t.Format("Mon Jan 2 15:04:05 2006")
+	mailtime2 := t.Format("Mon, 2 Jan 2006 15:04:05 -0700")
+	Mail.Println("From " + form.Email + " " + mailtime)
+	Mail.Println("Return-path: <" + form.Email + ">")
+	Mail.Println("Envelope-to: " + Destination)
+	Mail.Println("Delivery-date: " + mailtime2)
+	Mail.Println("To: " + Destination)
+	Mail.Println("Subject: " + form.Subject)
+	Mail.Println("From: " + form.Email)
+	Mail.Println("Date: " + mailtime2)
+	Mail.Println("\n" + form.Message + "\n\n")
+	return nil
 }

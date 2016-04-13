@@ -221,7 +221,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		homeHandler(rw, r)
 		return
 	default:
-		err = mbox.Save(rw, r, destination, query)
+		err = mbox.ParseForm(destination, query)
 		if err != nil {
 			log.Printf("FAILURE-contact: %s at %s\n\t%s %s", r.UserAgent(), r.RemoteAddr, query, err.Error())
 			http.Redirect(rw, r, "/?status=0&r=5#contact", http.StatusFound)
