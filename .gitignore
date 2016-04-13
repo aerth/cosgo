@@ -4,7 +4,7 @@
 *.mbox
 cosgo
 cosgo.exe
+cosgo-osx
 files/*
 page/*
 mbox/example/example
-

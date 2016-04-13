@@ -554,7 +554,7 @@ func main() {
 				}
 			}
 		}()
-		// End the for loop with a select loop
+		// End the for loop with a select loop with cosgoRefresh sleep timer.
 		select {
 		default:
 			if !*quiet {
@@ -658,10 +658,10 @@ func generateAPIKey(n int) string {
 	return strings.TrimSpace(string(b))
 }
 
-// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
-// There should be a copy of the MIT license bundled with this software.
-
 func pgpEncode(plain string) (ciphertext string) {
 	ciphertext = plain
 	return ciphertext
 }
+
+// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
+// There should be a copy of the MIT license bundled with this software.
