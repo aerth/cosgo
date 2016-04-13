@@ -240,7 +240,7 @@ func main() {
 	}
 
 	if *resolvemail {
-		mbox.Level = 2
+		mbox.ValidationLevel = 2
 	}
 
 	// -custom="anything" sets -config=true

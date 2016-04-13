@@ -55,7 +55,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 				reason = "Bad message."
 
 			case "6":
-				reason = "Bad error?"
+				reason = "Bad error."
 			}
 			status = "Your message was not sent: " + reason
 		}
@@ -165,7 +165,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 
 	// Check POST
 	if r.Method != "POST" {
-		log.Printf("\nNot a POST request... \n\t" + r.RemoteAddr + r.RequestURI + r.UserAgent())
+		log.Printf("\nNot a POST request... \n\t" + r.RemoteAddr + " " + r.RequestURI + " " + r.UserAgent())
 		http.Redirect(rw, r, "/?status=0&r=1#contact", http.StatusFound)
 		return
 	}
@@ -192,16 +192,14 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		log.Printf("User Human: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Printf("Key Match:\n\t%s\n\t%s", ourpath, cosgo.PostKey)
 	}
-	r.ParseForm()
-
-	// Given the circumstances, you would think the form is ready.
+	r.ParseForm() // Could still be funky form
 	query = r.Form
-	form := parseQuery(query)
+	form := mbox.ParseForm(cosgoDestination, query) // normalize and validate
 	if form.Email == "@" || form.Email == " " || !strings.ContainsAny(form.Email, "@") || !strings.ContainsAny(form.Email, ".") {
 		http.Redirect(rw, r, "/?status=0&r=4#contact ", http.StatusFound)
 		return
 	}
-	// Switch mailmode and send it out! Success message may change/be customized in the future.
+	// Switch on mailmode and send it out! Success message may change/be customized in the future.
 	switch *mailmode {
 	case smtpmandrill:
 		mandrillSender(rw, r, destination, query)
@@ -221,10 +219,10 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		homeHandler(rw, r)
 		return
 	default:
-		err = mbox.ParseForm(destination, query)
+		err = mbox.Save(form)
 		if err != nil {
 			log.Printf("FAILURE-contact: %s at %s\n\t%s %s", r.UserAgent(), r.RemoteAddr, query, err.Error())
-			http.Redirect(rw, r, "/?status=0&r=5#contact", http.StatusFound)
+			http.Redirect(rw, r, "/?status=0&r=6#contact", http.StatusFound)
 
 			return
 		}
