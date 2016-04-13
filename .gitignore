@@ -6,3 +6,5 @@ cosgo
 cosgo.exe
 files/*
 page/*
+mbox/example/example
+
