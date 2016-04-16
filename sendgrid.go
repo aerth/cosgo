@@ -17,7 +17,7 @@ type Form struct {
 
 // sendgridSend connects to the Sendgrid API and processes the form.
 func sendgridSend(destinationEmail string, form *Form) (ok bool, msg string) {
-	log.Println("Key: " + sendgridKey)
+	//log.Println("Key: " + sendgridKey) // debug sendgrid
 	sg := sendgrid.NewSendGridClientWithApiKey(sendgridKey)
 	message := sendgrid.NewMail()
 	message.AddTo(destinationEmail)

@@ -147,7 +147,7 @@ func loadConfig() bool {
 	configarray := strings.Split(configdecoded, "::::")
 
 	// Cosgo 0.6 uses new config file!
-	if len(configarray) < 7 {
+	if len(configarray) < 8 {
 		fmt.Println("Broken config file. Create a new one. This happens when updating cosgo version.")
 		if seconf.ConfirmChoice("Would you like to delete it? "+seconf.Locate(*custom), true) {
 			seconf.Destroy(*custom)
@@ -167,8 +167,8 @@ func loadConfig() bool {
 	*port = configarray[6]
 	*logpath = configarray[7]
 	*bind = configarray[8]
-	if configarray[8] != "" {
-		*logpath = configarray[8]
+	if *logpath == "" {
+		*logpath = "cosgo.log"
 	}
 	if configarray[9] == "no" {
 		*secure = true
@@ -190,10 +190,10 @@ func loadConfig() bool {
 		*mailmode = localmail
 	}
 
-	if configarray[3] == "" {
+	if configarray[4] == "" {
 		mandrillKey = ""
 	}
-	if configarray[4] == "" {
+	if configarray[5] == "" {
 		sendgridKey = ""
 	}
 	if *bind == "" {
