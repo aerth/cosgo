@@ -62,6 +62,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	thyme := time.Now()
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
+	uptime := time.Since(cosgo.Boottime).String()
 
 	t, templateerr := template.New("Index").ParseFiles("./templates/index.html")
 	if !*form {
@@ -79,6 +80,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			"Pages":          *pages,
 			"PagePath":       *custompages,
 			"Hits":           hitcounter,
+			"Uptime":         uptime,
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),

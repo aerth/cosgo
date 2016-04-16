@@ -70,11 +70,13 @@ var (
 	cosgoRefresh     = 42 * time.Minute
 	err              error
 	hitcounter       int
+	boottime         time.Time
 )
 
-// Cosgo. This changes every [cosgoRefresh] minutes
+// Cosgo - This changes every [cosgoRefresh] minutes
 type Cosgo struct {
-	PostKey string
+	PostKey  string
+	Boottime time.Time
 }
 
 var cosgo = new(Cosgo)
@@ -492,7 +494,12 @@ func main() {
 	if *debug && !*quiet {
 		log.Printf("Info: Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
 	}
-	boottime := time.Now()
+	go func() {
+		for {
+			boottime := time.Now()
+			cosgo.Boottime = boottime
+		}
+	}()
 	// Start Serving Loop
 	for {
 		listener, err = sl.New(oglistener)

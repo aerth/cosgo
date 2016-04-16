@@ -165,7 +165,8 @@ func loadConfig() bool {
 	mandrillKey = configarray[4]
 	sendgridKey = configarray[5]
 	*port = configarray[6]
-	*bind = configarray[7]
+	*logpath = configarray[7]
+	*bind = configarray[8]
 	if configarray[8] != "" {
 		*logpath = configarray[8]
 	}
