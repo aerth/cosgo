@@ -3,6 +3,7 @@
 *~
 *.mbox
 cosgo
+cosgo-*
 cosgo.exe
 cosgo-osx
 files/*
