@@ -204,7 +204,12 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	// Switch on mailmode and send it out! Success message may change/be customized in the future.
 	switch *mailmode {
 	case smtpmandrill:
-		mandrillSender(rw, r, destination, query)
+		err = mandrillSender(rw, r, destination, query)
+		if err != nil {
+			log.Printf("FAILURE-contact: %s at %s\n\t%s", r.UserAgent(), r.RemoteAddr, query)
+			http.Redirect(rw, r, "/?status=0&r=5#contact ", http.StatusFound)
+			return
+		}
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		http.Redirect(rw, r, "/?status=1", http.StatusFound)
 		return
@@ -218,7 +223,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		rw.Header().Add("status", "success")
-		homeHandler(rw, r)
+		http.Redirect(rw, r, "/?status=1", http.StatusFound)
 		return
 	default:
 		err = mbox.Save(form)

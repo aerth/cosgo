@@ -1,1 +1,1 @@
-web: cosgo -quiet -debug -port=$PORT
+web: cosgo -quiet -nolog -mailmode sendgrid -port=$PORT $FLAGS

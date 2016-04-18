@@ -27,9 +27,9 @@ func sendgridSend(destinationEmail string, form *Form) (ok bool, msg string) {
 	message.SetText(form.Message)
 	r := sg.Send(message)
 	if r == nil {
-		return true, string("Sendgrid Email sent from" + destinationEmail)
+		return true, string("Sendgrid: Email sent to " + destinationEmail)
 	}
-	return false, string("Sendgrid Error: (" + destinationEmail + ")" + r.Error())
+	return false, string("Sendgrid Error:" + r.Error())
 }
 
 // sendgridSender always returns success for the visitor. This function needs some work.

@@ -36,11 +36,24 @@ func quickSelfTest() (err error) {
 					return errors.New("Fatal: environmental variable `MANDRILL_KEY` is Crucial.\n\n\t\tHint: export MANDRILL_KEY=123456789")
 
 				}
+				if cosgoDestination == "" {
+					cosgoDestination = os.Getenv("COSGO_DESTINATION")
+					if cosgoDestination == "" {
+						return errors.New("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=you@yours.com")
+					}
+				}
 			case smtpsendgrid:
 				sendgridKey = os.Getenv("SENDGRID_KEY")
 				if sendgridKey == "" {
-					return errors.New("Fatal: environmental variable `SENDGRID_KEY` is Crucial.\n\n\t\tHint: export SENDGRID_KEY=123456789")
-
+					sendgridKey = "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"
+					log.Println("Warning: Set SENDGRID_KEY variable for production usage.")
+					//		return errors.New("Fatal: environmental variable `SENDGRID_KEY` is Crucial.\n\n\t\tHint: export SENDGRID_KEY=123456789")
+				}
+				if cosgoDestination == "" {
+					cosgoDestination = os.Getenv("COSGO_DESTINATION")
+					if cosgoDestination == "" {
+						return errors.New("Fatal: environmental variable `COSGO_DESTINATION` is Crucial.\n\n\t\tHint: export COSGO_DESTINATION=you@yours.com")
+					}
 				}
 			default:
 				// No mailmode, going for mailbox.
