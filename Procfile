@@ -1,1 +1,1 @@
-web: cosgo -quiet -nolog -mailmode=sendgrid -port=$PORT
+web: cosgo -quiet -nolog -sendgrid -port=$PORT

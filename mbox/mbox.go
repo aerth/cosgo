@@ -139,9 +139,9 @@ func parseQuery(query url.Values) *Form {
 	}
 	if additionalFields != "" {
 		if form.Message == "" {
-			form.Message = form.Message + "Message:\n<br>" + additionalFields
+			form.Message = form.Message + "Message:\n<br>" + p.Sanitize(additionalFields)
 		} else {
-			form.Message = form.Message + "\n<br>Additional:\n<br>" + additionalFields
+			form.Message = form.Message + "\n<br>Additional:\n<br>" + p.Sanitize(additionalFields)
 		}
 	}
 	return form

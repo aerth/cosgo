@@ -132,27 +132,28 @@ const (
 
 var (
 	// TODO: dont use flags. Will be using env/seconf only. seconf is an environmental variable based configuration system. Try cosgo -config
-	help        = flag.Bool("help", false, "Show this and quit")
-	port        = flag.String("port", "8080", "Port to listen on")
-	bind        = flag.String("bind", "0.0.0.0", "Default: 0.0.0.0 (all interfaces)...\nTry -bind=127.0.0.1")
-	debug       = flag.Bool("debug", false, "Send logs to stdout. \nDont switch to cosgo.log")
-	secure      = flag.Bool("secure", false, "Accept only https secure cookie transfer.")
-	mailmode    = flag.String("mailmode", localmail, "Choose one: mailbox, mandrill, sendgrid	\nExample: -mailmode=mailbox")
-	fastcgi     = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
-	static      = flag.Bool("static", true, "Serve /static/ files. Use -static=false to disable")
-	files       = flag.Bool("files", true, "Serve /files/ files. Use -files=false to disable")
-	noredirect  = flag.Bool("noredirect", false, "Default is to redirect all 404s back to /. \nSet true to enable error.html template")
-	love        = flag.Bool("love", false, "Fun. Show I love ___ instead of redirect")
-	config      = flag.Bool("config", false, "Use config file at ~/.cosgo")
-	custom      = flag.String("custom", "default", "Example: cosgo2 ...creates $HOME/.cosgo2")
-	logpath     = flag.String("log", "cosgo.log", "Example: /dev/null or /var/log/cosgo/log")
-	quiet       = flag.Bool("quiet", false, "No output to stdout. \nFor use with cron and -log flag such as: cosgo -quiet -log=/dev/null or cosgo -quiet -log=/var/log/cosgo/log")
-	nolog       = flag.Bool("nolog", false, "No Output Whatsoever")
-	form        = flag.Bool("form", false, "Use /page/index.html and /templates/form.html, \nsets -pages flag automatically.")
-	pages       = flag.Bool("pages", false, "Serve /page/")
-	resolvemail = flag.Bool("resolvemail", false, "Set true to check email addresses")
-	custompages = flag.String("custompages", "page", "Serve pages from X dir")
-	mailbox     = true
+	help         = flag.Bool("help", false, "Show this and quit")
+	port         = flag.String("port", "8080", "Port to listen on")
+	bind         = flag.String("bind", "0.0.0.0", "Default: 0.0.0.0 (all interfaces)...\nTry -bind=127.0.0.1")
+	debug        = flag.Bool("debug", false, "Send logs to stdout. \nDont switch to cosgo.log")
+	secure       = flag.Bool("secure", false, "Accept only https secure cookie transfer.")
+	mailmode     = flag.String("mailmode", localmail, "Choose one: mailbox, mandrill, sendgrid	\nExample: -mailmode=mailbox")
+	fastcgi      = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
+	static       = flag.Bool("static", true, "Serve /static/ files. Use -static=false to disable")
+	files        = flag.Bool("files", true, "Serve /files/ files. Use -files=false to disable")
+	noredirect   = flag.Bool("noredirect", false, "Default is to redirect all 404s back to /. \nSet true to enable error.html template")
+	love         = flag.Bool("love", false, "Fun. Show I love ___ instead of redirect")
+	config       = flag.Bool("config", false, "Use config file at ~/.cosgo")
+	custom       = flag.String("custom", "default", "Example: cosgo2 ...creates $HOME/.cosgo2")
+	logpath      = flag.String("log", "cosgo.log", "Example: /dev/null or /var/log/cosgo/log")
+	quiet        = flag.Bool("quiet", false, "No output to stdout. \nFor use with cron and -log flag such as: cosgo -quiet -log=/dev/null or cosgo -quiet -log=/var/log/cosgo/log")
+	nolog        = flag.Bool("nolog", false, "No Output Whatsoever")
+	form         = flag.Bool("form", false, "Use /page/index.html and /templates/form.html, \nsets -pages flag automatically.")
+	pages        = flag.Bool("pages", false, "Serve /page/")
+	sendgridflag = flag.Bool("sendgrid", false, "Set -sendgrid to not use local mailbox. This automatically sets \"-mailmode sendgrid\"")
+	resolvemail  = flag.Bool("resolvemail", false, "Set true to check email addresses")
+	custompages  = flag.String("custompages", "page", "Serve pages from X dir")
+	mailbox      = true
 )
 
 /*
@@ -236,7 +237,9 @@ func main() {
 	if *custom == "default" {
 		*custom = "cosgorc"
 	}
-
+	if *sendgridflag {
+		*mailmode = "sendgrid"
+	}
 	if *mailmode != localmail {
 		mailbox = false
 	}
@@ -609,7 +612,7 @@ func parseQuery(query url.Values) *Form {
 		} else if k == "message" {
 			form.Message = k + ": " + v[0] + "<br>\n"
 			form.Message = p.Sanitize(form.Message)
-		} else {
+		} else if k != "cosgo" && k != "captchaid" && k != "captchasolution" {
 			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
 		}
 	}
@@ -618,10 +621,10 @@ func parseQuery(query url.Values) *Form {
 	}
 	if additionalFields != "" {
 		if form.Message == "" {
-			form.Message = form.Message + "Message:\n<br>" + additionalFields
+			form.Message = form.Message + "Message:\n<br>" + p.Sanitize(additionalFields)
 
 		} else {
-			form.Message = form.Message + "\n<br>Additional:\n<br>" + additionalFields
+			form.Message = form.Message + "\n<br>Additional:\n<br>" + p.Sanitize(additionalFields)
 
 		}
 	}
