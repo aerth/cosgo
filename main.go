@@ -495,10 +495,10 @@ func main() {
 		log.Printf("Info: Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
 	}
 	go func() {
-		for {
-			boottime := time.Now()
-			cosgo.Boottime = boottime
-		}
+
+		boottime := time.Now()
+		cosgo.Boottime = boottime
+
 	}()
 	// Start Serving Loop
 	for {
