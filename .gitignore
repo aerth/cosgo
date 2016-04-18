@@ -9,3 +9,5 @@ cosgo-osx
 files/*
 page/*
 mbox/example/example
+Godeps
+vendor
