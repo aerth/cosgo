@@ -37,13 +37,13 @@ These template comments don't show up in the served page.
 </form>
 {{if .Pages}}<p>Now with: <a target="_parent" href="{{.PagePath}}/demo.html">custom pages!</a></p>{{end}}
 
-<pre style="text-align: left; position: static; bottom: 0px; left: 10px;">
-debug: {{.Key}}
-time: {{.Now}} ( Running for {{.Uptime}} )
+<pre style="text-align: left; position: absolute; bottom: 0px; left: 10px;">
+time: {{.Now}}
+uptime: {{.Uptime}}
 counter: {{.Hits}}
 </pre>
 
-<pre style="text-align: right; position: static; bottom: 0px; right: 10px;">
+<pre style="text-align: right; position: absolute; bottom: 0px; right: 10px;">
 <a href="https://github.com/aerth/cosgo">Source Code</a>
 </pre>
 <script>
