@@ -40,6 +40,8 @@ cosgo -bind 127.0.0.1 -port 8000 -fastcgi # nginx setup
 
 ```
 
+See newest version in action at https://cosgo.herokuapp.com/
+
 -------
 
 ## Installation
