@@ -45,9 +45,7 @@ func quickSelfTest() (err error) {
 			case smtpsendgrid:
 				sendgridKey = os.Getenv("SENDGRID_KEY")
 				if sendgridKey == "" {
-					sendgridKey = "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"
-					log.Println("Warning: Set SENDGRID_KEY variable for production usage.")
-					//		return errors.New("Fatal: environmental variable `SENDGRID_KEY` is Crucial.\n\n\t\tHint: export SENDGRID_KEY=123456789")
+					return errors.New("Fatal: environmental variable `SENDGRID_KEY` is Crucial.\n\n\t\tHint: export SENDGRID_KEY=123456789")
 				}
 				if cosgoDestination == "" {
 					cosgoDestination = os.Getenv("COSGO_DESTINATION")
