@@ -77,7 +77,9 @@ var (
 type Cosgo struct {
 	PostKey   string
 	Boottime  time.Time
+	Static    string
 	Templates string // Directory where templates are located. Defaults to ./templates and falls back to /usr/local/share/cosgo/templates
+	Dir       string // Directory where we are currently located (./)
 }
 
 var cosgo = new(Cosgo)
@@ -201,7 +203,11 @@ func main() {
 
 	// Future: dont use flags pkg
 	flag.Parse()
-
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	cosgo.Dir = cwd + "/"
 	// Custom refresh time
 	// Example: COSGOREFRESH=10m cosgo -debug
 	if os.Getenv("COSGOREFRESH") != "" {
@@ -401,10 +407,12 @@ func main() {
 	// POST endpoint (emailHandler checks the key)
 	r.HandleFunc("/{{whatever}}/send", emailHandler)
 
-	// TODO: allow changing static and files directory names
+	// TODO: maybe allow changing static and files directory names
 	// TODO: mime types
-	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
-	ss := http.FileServer(http.Dir("./static/"))
+
+	//s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+	s := http.StripPrefix("/static/", http.FileServer(http.Dir(cosgo.Static)))
+	ss := http.FileServer(http.Dir(cosgo.Static))
 	sf := http.FileServer(http.Dir("./files/"))
 	sp := http.StripPrefix("/"+*custompages+"/", http.FileServer(http.Dir("./"+*custompages+"/")))
 

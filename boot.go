@@ -73,20 +73,45 @@ func quickSelfTest() (err error) {
 		}
 	}
 
-	cosgo.Templates = "./templates"
+	cosgo.Static = cosgo.Dir + "static/"
+	if *static {
+		_, err = os.Open(cosgo.Static)
+		if err != nil {
+			if os.IsNotExist(err) {
+				cosgo.Static = "/usr/local/share/cosgo/static/"
+
+				_, err = os.Open(cosgo.Static)
+				if err != nil {
+					if os.IsNotExist(err) {
+
+						log.Fatalln("Need static directory for use with -static flag.")
+
+					}
+				}
+
+			}
+		}
+	}
+
+	cosgo.Templates = cosgo.Dir + "templates/"
+	log.Println("Trying ./templates")
 	// Main template. Replace with your own, but keep the {{.Tags}} in it.
 	_, err = template.New("Index").ParseFiles(cosgo.Templates + "index.html")
 	if err != nil {
+		log.Println("Woops: Template Error:", err)
 		_, err2 := template.New("Index").ParseFiles("/usr/local/share/cosgo/templates/index.html")
 		if err2 != nil {
 			log.Println("Fatal: Template Error:", err2)
-			log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
+			log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy templates+static directories from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
 		} else {
+			log.Println("Using /usr/local/share/cosgo/templates directory")
 			cosgo.Templates = "/usr/local/share/cosgo/templates/"
 		}
 
 	} else {
-		cosgo.Templates = "./templates/"
+		log.Println("Using ./templates directory")
+		cosgo.Templates = cosgo.Dir + "templates/"
+
 	}
 
 	// Make sure Error pages template is present
