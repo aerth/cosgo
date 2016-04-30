@@ -1,5 +1,6 @@
 # aerth [https://isupon.us]
 # https://github.com/aerth
+# This should do it: `make deps && make && sudo make install`
 # yo type "make cross" to cross compile!
 # for releases i use https://github.com/aerth/hashsum
 NAME=cosgo
@@ -7,12 +8,16 @@ VERSION=0.6
 RELEASE:=v${VERSION}.$(shell git rev-parse --verify --short HEAD)
 PREFIX=/usr/local/bin
 all:
+	set -e
 	go fmt
 	go vet
-	go build -v -o ${NAME}-${RELEASE}
+	go build -v -o ${NAME}-${RELEASE} && echo Built ${NAME}-${RELEASE}
 
 install:
 	mv ${NAME}-${RELEASE} ${PREFIX}/${NAME}
+
+deps:
+	go get -v -d .
 
 update:
 	rm ${PREFIX}/${NAME} || true
