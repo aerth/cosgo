@@ -64,9 +64,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
 	uptime := time.Since(cosgo.Boottime).String()
 
-	t, templateerr := template.New("Index").ParseFiles("./templates/index.html")
+	t, templateerr := template.New("Index").ParseFiles(cosgo.Templates + "index.html")
 	if !*form {
-		t, templateerr = template.New("Index").ParseFiles("./templates/index.html")
+		t, templateerr = template.New("Index").ParseFiles(cosgo.Templates + "index.html")
 	}
 	if templateerr != nil {
 		// Do Something
@@ -119,7 +119,7 @@ func customErrorHandler(w http.ResponseWriter, r *http.Request) {
 	domain := getDomain(r)
 	lol := p.Sanitize(r.URL.Path[1:])
 	log.Printf("404 on %s/%s", lol, domain)
-	t, err := template.New("Error").ParseFiles("./templates/error.html")
+	t, err := template.New("Error").ParseFiles(cosgo.Templates + "error.html")
 	if err == nil {
 		data := map[string]interface{}{
 			"err":            "404",

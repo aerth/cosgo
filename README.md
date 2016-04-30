@@ -68,6 +68,18 @@ firefox http://127.0.0.1:8080 # Check it out.
 
 ```
 
+or
+ 
+
+```
+git clone https://github.com/aerth/cosgo.git
+cd cosgo
+make deps
+make
+sudo make install # installs to /usr/local/bin/cosgo
+
+```
+
 -------
 
 ## Theme

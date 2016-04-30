@@ -73,15 +73,24 @@ func quickSelfTest() (err error) {
 		}
 	}
 
+	cosgo.Templates = "./templates"
 	// Main template. Replace with your own, but keep the {{.Tags}} in it.
-	_, err = template.New("Index").ParseFiles("./templates/index.html")
+	_, err = template.New("Index").ParseFiles(cosgo.Templates + "index.html")
 	if err != nil {
-		log.Println("Fatal: Template Error:", err)
-		log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
+		_, err2 := template.New("Index").ParseFiles("/usr/local/share/cosgo/templates/index.html")
+		if err2 != nil {
+			log.Println("Fatal: Template Error:", err2)
+			log.Fatal("Fatal: Template Error\n\n\t\tHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")
+		} else {
+			cosgo.Templates = "/usr/local/share/cosgo/templates/"
+		}
+
+	} else {
+		cosgo.Templates = "./templates/"
 	}
 
 	// Make sure Error pages template is present
-	_, err = template.New("Error").ParseFiles("./templates/error.html")
+	_, err = template.New("Error").ParseFiles(cosgo.Templates + "error.html")
 	if err != nil {
 		log.Println("Fatal: Template Error:", err)
 		log.Fatal("Fatal: Template Error\nHint: Copy ./templates and ./static from $GOPATH/src/github.com/aerth/cosgo/ to the location you are running cosgo from.")

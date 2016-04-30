@@ -75,8 +75,9 @@ var (
 
 // Cosgo - This changes every [cosgoRefresh] minutes
 type Cosgo struct {
-	PostKey  string
-	Boottime time.Time
+	PostKey   string
+	Boottime  time.Time
+	Templates string // Directory where templates are located. Defaults to ./templates and falls back to /usr/local/share/cosgo/templates
 }
 
 var cosgo = new(Cosgo)

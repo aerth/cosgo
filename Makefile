@@ -6,7 +6,7 @@
 NAME=cosgo
 VERSION=0.6
 RELEASE:=v${VERSION}.$(shell git rev-parse --verify --short HEAD)
-PREFIX=/usr/local/bin
+PREFIX=/usr/local
 all:
 	set -e
 	go fmt
@@ -14,7 +14,11 @@ all:
 	go build -v -o ${NAME}-${RELEASE} && echo Built ${NAME}-${RELEASE}
 
 install:
-	mv ${NAME}-${RELEASE} ${PREFIX}/${NAME}
+	mv ${NAME}-${RELEASE} ${PREFIX}/bin/${NAME}
+	set noclobber on
+	mkdir -p ${PREFIX}/share/${NAME}/
+	cp -R templates ${PREFIX}/share/${NAME}/templates
+	cp -R static ${PREFIX}/share/${NAME}/static
 
 deps:
 	go get -v -d .
