@@ -71,6 +71,7 @@ var (
 	err              error
 	hitcounter       int
 	boottime         time.Time
+	Version          = "0.7-go-get"
 )
 
 // Cosgo - This changes every [cosgoRefresh] minutes
@@ -80,6 +81,7 @@ type Cosgo struct {
 	Static    string
 	Templates string // Directory where templates are located. Defaults to ./templates and falls back to /usr/local/share/cosgo/templates
 	Dir       string // Directory where we are currently located (./)
+
 }
 
 var cosgo = new(Cosgo)
@@ -280,7 +282,7 @@ func main() {
 
 	if !*quiet {
 		fmt.Println(logo)
-		fmt.Printf("\n\tcosgo v0.6\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n")
+		fmt.Printf("\n\tcosgo v" + Version + "\n\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n")
 
 	}
 

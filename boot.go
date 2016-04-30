@@ -26,6 +26,7 @@ func backwardsComp() {
 }
 
 func quickSelfTest() (err error) {
+
 	// If not using config, and mailbox is not requested, require a SMTP API key. Otherwise, go for mailbox mode.
 	if !*config {
 		if mailbox == false {
