@@ -77,6 +77,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		data := map[string]interface{}{
 			"Now":            nowtime,
 			"Status":         status,
+			"Version":        Version,
 			"Pages":          *pages,
 			"PagePath":       *custompages,
 			"Hits":           hitcounter,

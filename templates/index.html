@@ -37,6 +37,9 @@ These template comments don't show up in the served page.
 </form>
 {{if .Pages}}<p>Now with: <a target="_parent" href="{{.PagePath}}/demo.html">custom pages!</a></p>{{end}}
 
+<!-- You probably don't want to display your cosgo version on *your* instance. -->
+{{if .Version}}<p>cosgo {{.Version}}</p>{{end}}
+
 <pre style="text-align: left; position: absolute; bottom: 0px; left: 10px;">
 time: {{.Now}}
 uptime: {{.Uptime}}
