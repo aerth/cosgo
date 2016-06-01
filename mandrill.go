@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aerth/cosgo/mbox"
 	"github.com/goware/emailx"
 	mandrill "github.com/keighl/mandrill"
 )
@@ -42,7 +43,7 @@ func canMandrill() bool {
 	return true
 }
 
-func sendMandrill(destinationEmail string, form *Form) bool {
+func sendMandrill(destinationEmail string, form *mbox.Form) bool {
 	//if !canMandrill() {
 
 	//	return false
@@ -81,7 +82,7 @@ func sendMandrill(destinationEmail string, form *Form) bool {
 
 // mandrillSender always returns success for the visitor. This function needs some work.
 func mandrillSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
-	form := parseQuery(query)
+	form := mbox.ParseQueryGPG(query, publicKey)
 	//Validate user submitted email address
 	err = emailx.Validate(form.Email)
 	if err != nil {

@@ -91,27 +91,6 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// loveHandler is just for fun.
-// I love lamp. This displays affection for r.URL.Path[1:]
-func loveHandler(w http.ResponseWriter, r *http.Request) {
-
-	p := bluemonday.UGCPolicy()
-	subdomain := getSubdomain(r)
-	lol := p.Sanitize(r.URL.Path[1:])
-	if r.Method != "GET" {
-		log.Printf("Something tried %s on %s", r.Method, lol)
-		http.Redirect(w, r, "/", 301)
-	}
-	if subdomain == "" {
-		fmt.Fprintf(w, "I love %s!", lol)
-		log.Printf("I love %s says %s at %s", lol, r.UserAgent(), r.RemoteAddr)
-	} else {
-		fmt.Fprintf(w, "%s loves %s!", subdomain, lol)
-		log.Printf("I love %s says %s at %s", subdomain, r.UserAgent(), r.RemoteAddr)
-	}
-
-}
-
 // customErrorHandler allows cosgo administrator to customize the 404 Error page
 // Using the ./templates/error.html file.
 func customErrorHandler(w http.ResponseWriter, r *http.Request) {
@@ -197,8 +176,10 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	r.ParseForm() // Could still be funky form
 	query = r.Form
-	form := mbox.ParseForm(cosgoDestination, query) // normalize and validate
-	if form.Email == "@" || form.Email == " " || !strings.ContainsAny(form.Email, "@") || !strings.ContainsAny(form.Email, ".") {
+
+	mailform = mbox.ParseFormGPG(cosgoDestination, query, publicKey) // normalize and validate
+
+	if mailform.Email == "@" || mailform.Email == " " || !strings.ContainsAny(mailform.Email, "@") || !strings.ContainsAny(mailform.Email, ".") {
 		http.Redirect(rw, r, "/?status=0&r=4#contact ", http.StatusFound)
 		return
 	}
@@ -227,7 +208,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		http.Redirect(rw, r, "/?status=1", http.StatusFound)
 		return
 	default:
-		err = mbox.Save(form)
+		err = mbox.Save(mailform)
 		if err != nil {
 			log.Printf("FAILURE-contact: %s at %s\n\t%s %s", r.UserAgent(), r.RemoteAddr, query, err.Error())
 			http.Redirect(rw, r, "/?status=0&r=6#contact", http.StatusFound)

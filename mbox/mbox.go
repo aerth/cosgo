@@ -23,15 +23,23 @@
 // SOFTWARE.
 //
 
+// mbox library stores a form to a .mbox file
 package mbox
 
 import (
+	"bytes"
 	"errors"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
 
 	"github.com/goware/emailx"
 	"github.com/microcosm-cc/bluemonday"
@@ -65,16 +73,24 @@ func Open(file string) error {
 }
 
 // PraseForm parses a url submitted query and returns a mbox.Form
-func ParseForm(destination string, query url.Values) (form *Form) {
+func ParseFormGPG(destination string, query url.Values, publicKey []byte) (form *Form) {
 	Destination = destination
-	form = parseQuery(query)
+	form = ParseQueryGPG(query, publicKey)
 	return form
 }
 
+/*
+// PraseForm parses a url submitted query and returns a mbox.Form
+func ParseFormGPG(destination string, query url.Values, publicKey string) (form *Form) {
+	Destination = destination
+	form = parseQueryGPG(query, publicKey)
+	return form
+}
+*/
 // ParseAndSave parses a url submitted query and sends it to Send as a mbox.Form
 func ParseAndSave(destination string, query url.Values) (err error) {
 	Destination = destination
-	form := parseQuery(query)
+	form := ParseQuery(query)
 	err = Save(form)
 	return err
 }
@@ -115,7 +131,7 @@ func Save(form *Form) error {
 }
 
 // parseQuery returns a mbox.Form from a url.Values
-func parseQuery(query url.Values) *Form {
+func ParseQuery(query url.Values) *Form {
 	p := bluemonday.StrictPolicy()
 	form := new(Form)
 	additionalFields := ""
@@ -144,5 +160,103 @@ func parseQuery(query url.Values) *Form {
 			form.Message = form.Message + "\n<br>Additional:\n<br>" + p.Sanitize(additionalFields)
 		}
 	}
+
 	return form
+}
+
+// parseQueryGPG returns a mbox.Form from a url.Values but encodes the form.Message
+func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
+	p := bluemonday.StrictPolicy()
+	form := new(Form)
+	additionalFields := ""
+	for k, v := range query {
+		k = strings.ToLower(k)
+		if k == "email" || k == "name" {
+			form.Email = v[0]
+			form.Email = p.Sanitize(form.Email)
+		} else if k == "subject" {
+			form.Subject = v[0]
+			form.Subject = p.Sanitize(form.Subject)
+		} else if k == "message" {
+			form.Message = k + ": " + v[0] + "<br>\n"
+			form.Message = p.Sanitize(form.Message)
+		} else if k != "cosgo" && k != "captchaid" && k != "captchasolution" {
+			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
+		}
+	}
+	if form.Subject == "" || form.Subject == " " {
+		form.Subject = "[New Message]"
+	}
+	if additionalFields != "" {
+		if form.Message == "" {
+			form.Message = form.Message + "Message:\n<br>" + p.Sanitize(additionalFields)
+		} else {
+			form.Message = form.Message + "\n<br>Additional:\n<br>" + p.Sanitize(additionalFields)
+		}
+	}
+
+	if publicKey != nil {
+		//	log.Println("Got form. Encoding it with", publicKey)
+		tmpmsg, err := PGPEncode(form.Message, publicKey)
+		if err != nil {
+			log.Println("gpg error.")
+			log.Println(err)
+		} else {
+
+			form.Message = tmpmsg
+		}
+
+	}
+	return form
+}
+func rel2real(file string) (realpath string) {
+	pathdir, _ := path.Split(file)
+
+	if pathdir == "" {
+		realpath, _ = filepath.Abs(file)
+	} else {
+		realpath = file
+	}
+	return realpath
+}
+
+func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
+
+	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
+	if err != nil {
+		log.Fatal(err)
+	}
+	buf := new(bytes.Buffer)
+
+	abuf, err := armor.Encode(buf, "PGP MESSAGE", map[string]string{
+		"Version": "OpenPGP",
+	})
+	if err != nil {
+		return "", err
+	}
+	// Encrypt message using public key
+	w, err := openpgp.Encrypt(abuf, entitylist, nil, nil, nil)
+	defer w.Close()
+	if err != nil {
+		return "", err
+	}
+	defer w.Close()
+	_, err = w.Write([]byte(plain))
+	if err != nil {
+		return "", err
+	}
+
+	err = w.Close()
+
+	if err != nil {
+		return "", err
+	}
+	abuf.Close()
+	// Output as base64 encoded string
+	bytes, err := ioutil.ReadAll(buf)
+
+	encStr = string(bytes)
+	//	encStr = base64.StdEncoding.EncodeToString(bytes)
+
+	return encStr, nil
 }
