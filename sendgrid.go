@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/aerth/cosgo/mbox"
 	"github.com/goware/emailx"
 	sendgrid "github.com/sendgrid/sendgrid-go"
 )
@@ -16,7 +17,7 @@ type Form struct {
 }
 
 // sendgridSend connects to the Sendgrid API and processes the form.
-func sendgridSend(destinationEmail string, form *Form) (ok bool, msg string) {
+func sendgridSend(destinationEmail string, form *mbox.Form) (ok bool, msg string) {
 	//log.Println("Key: " + sendgridKey) // debug sendgrid
 	sg := sendgrid.NewSendGridClientWithApiKey(sendgridKey)
 	message := sendgrid.NewMail()
@@ -34,7 +35,7 @@ func sendgridSend(destinationEmail string, form *Form) (ok bool, msg string) {
 
 // sendgridSender always returns success for the visitor. This function needs some work.
 func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
-	form := parseQuery(query)
+	form := mbox.ParseQuery(query)
 	//Validate user submitted email address
 	err := emailx.Validate(form.Email)
 	if err != nil {

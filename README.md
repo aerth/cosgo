@@ -10,6 +10,7 @@ when all you needed was a contact form, anyways.
 * Tested on NetBSD and Debian servers, even runs on Windows. Probably runs great on anything else, too.
 * This needs some testing on other setups! If you use cosgo, I would love to hear from you! https://isupon.us
 * Now with -pages and -nolog and more in `cosgo --help`
+* Now with GPG encryption (optional)
 
 ```
 
@@ -37,6 +38,7 @@ cosgo -static=false # don't serve /static, /files or /page
 cosgo -custom "MyApp" -nolog # run our MyApp config with nolog
 cosgo --nolog # no output whatsoever
 cosgo -bind 127.0.0.1 -port 8000 -fastcgi # nginx setup
+cosgo -gpg publickey.asc -debug # loads publickey.asc into memory (so you can delete it after booting cosgo if you want)
 
 ```
 
