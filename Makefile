@@ -9,19 +9,25 @@ RELEASE:=${VERSION}.$(shell git rev-parse --verify --short HEAD)
 GO_LDFLAGS=-ldflags "-X main.Version=$(RELEASE)"
 PREFIX=/usr/local
 PREFIX?=$(shell pwd)
-all:
+ifeq (,${GOPATH})
+export GOPATH=/tmp/gopath
+endif
+all: deps
 	set -e
 	go fmt
-	go vet
-	go build -v ${GO_LDFLAGS} -o ${NAME}-v${RELEASE} && echo Built ${NAME}-${RELEASE}
+#	go vet
+	mkdir bin || true
+	go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE} && echo Built ${NAME}-${RELEASE}
+	chmod 755 bin/${NAME}-v${RELEASE}
 
 install:
 	echo installing to /usr/local/bin and /usr/local/share/cosgo/templates/
-	mv ${NAME}-${RELEASE} ${PREFIX}/bin/${NAME}
+	mv ./bin/${NAME}-v${RELEASE} ${PREFIX}/bin/${NAME}
 	set noclobber on
 	mkdir -p ${PREFIX}/share/${NAME}/ || true
 	cp -R templates ${PREFIX}/share/${NAME}/templates
 	cp -R static ${PREFIX}/share/${NAME}/static
+	chmod -R 755 ${PREFIX}/share/${NAME}
 
 deps:
 	go get -v -d .
