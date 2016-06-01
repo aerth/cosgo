@@ -75,7 +75,7 @@ func Open(file string) error {
 // PraseForm parses a url submitted query and returns a mbox.Form
 func ParseFormGPG(destination string, query url.Values, publicKey []byte) (form *Form) {
 	Destination = destination
-	form = parseQueryGPG(query, publicKey)
+	form = ParseQueryGPG(query, publicKey)
 	return form
 }
 
@@ -90,7 +90,7 @@ func ParseFormGPG(destination string, query url.Values, publicKey string) (form 
 // ParseAndSave parses a url submitted query and sends it to Send as a mbox.Form
 func ParseAndSave(destination string, query url.Values) (err error) {
 	Destination = destination
-	form := parseQuery(query)
+	form := ParseQuery(query)
 	err = Save(form)
 	return err
 }
@@ -131,7 +131,7 @@ func Save(form *Form) error {
 }
 
 // parseQuery returns a mbox.Form from a url.Values
-func parseQuery(query url.Values) *Form {
+func ParseQuery(query url.Values) *Form {
 	p := bluemonday.StrictPolicy()
 	form := new(Form)
 	additionalFields := ""
@@ -165,7 +165,7 @@ func parseQuery(query url.Values) *Form {
 }
 
 // parseQueryGPG returns a mbox.Form from a url.Values but encodes the form.Message
-func parseQueryGPG(query url.Values, publicKey []byte) *Form {
+func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
 	p := bluemonday.StrictPolicy()
 	form := new(Form)
 	additionalFields := ""
@@ -197,7 +197,7 @@ func parseQueryGPG(query url.Values, publicKey []byte) *Form {
 
 	if publicKey != nil {
 		//	log.Println("Got form. Encoding it with", publicKey)
-		tmpmsg, err := pgpEncode(form.Message, publicKey)
+		tmpmsg, err := PGPEncode(form.Message, publicKey)
 		if err != nil {
 			log.Println("gpg error.")
 			log.Println(err)
@@ -220,7 +220,7 @@ func rel2real(file string) (realpath string) {
 	return realpath
 }
 
-func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
+func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
 
 	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
 	if err != nil {
@@ -240,12 +240,14 @@ func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
 	if err != nil {
 		return "", err
 	}
+	defer w.Close()
 	_, err = w.Write([]byte(plain))
 	if err != nil {
 		return "", err
 	}
 
 	err = w.Close()
+
 	if err != nil {
 		return "", err
 	}

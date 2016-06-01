@@ -38,18 +38,14 @@ Contact form server. Saves to local mailbox or uses Mandrill or Sendgrid SMTP AP
 // SOFTWARE.
 
 import (
-	"bytes"
-	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
 	"net/http"
 	"net/http/fcgi"
-	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -57,8 +53,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"golang.org/x/crypto/openpgp"
 
 	"path"
 	"path/filepath"
@@ -68,7 +62,6 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	sl "github.com/hydrogen18/stoppableListener"
-	"github.com/microcosm-cc/bluemonday"
 )
 
 var (
@@ -620,6 +613,7 @@ func getMandrillKey() string {
 	return mandrillKey
 }
 
+/*
 // parseQuery sanitizes inputs and gets ready to save to mbox
 func parseQuery(query url.Values) *Form {
 	p := bluemonday.UGCPolicy()
@@ -655,7 +649,7 @@ func parseQuery(query url.Values) *Form {
 	}
 	if publicKey != nil {
 		log.Println("Got form. Encoding it.")
-		tmpmsg, err := pgpEncode(form.Message, publicKey)
+		tmpmsg, err := mbox.PGPEncode(form.Message, publicKey)
 		if err != nil {
 			log.Println("gpg error.")
 			log.Println(err)
@@ -665,7 +659,7 @@ func parseQuery(query url.Values) *Form {
 		}
 	}
 	return form
-}
+}*/
 
 // getDomain returns the domain name (without port) of a request.
 func getDomain(r *http.Request) string {
@@ -735,19 +729,22 @@ func read2mem(abspath string) []byte {
 
 }
 
+/*
 func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
 	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
 	if err != nil {
-		log.Fatal(err)
+	return plain, err
 	}
 
 	// Encrypt message using public key
 	buf := new(bytes.Buffer)
 	w, err := openpgp.Encrypt(buf, entitylist, nil, nil, nil)
 	if err != nil {
+	return plain, err
 	}
 	_, err = w.Write([]byte(plain))
 	if err != nil {
+	return plain, err
 	}
 	err = w.Close()
 	if err != nil {
@@ -759,6 +756,8 @@ func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
 
 	return encStr, nil
 }
+
+*/
 
 // Copyright 2016 aerth. All Rights Reserved.
 // Full source code at https://github.com/aerth/cosgo
