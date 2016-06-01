@@ -1,3 +1,4 @@
+// cosgo is an easy to use contact form *server*, able to be iframed on a static web site.
 package main
 
 /*
@@ -37,9 +38,12 @@ Contact form server. Saves to local mailbox or uses Mandrill or Sendgrid SMTP AP
 // SOFTWARE.
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -53,6 +57,11 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/crypto/openpgp"
+
+	"path"
+	"path/filepath"
 
 	"github.com/aerth/cosgo/mbox"
 	"github.com/dchest/captcha"
@@ -71,7 +80,8 @@ var (
 	err              error
 	hitcounter       int
 	boottime         time.Time
-	Version          = "0.7-go-get"
+	Version          = "0.8-go-get"
+	publicKey        []byte
 )
 
 // Cosgo - This changes every [cosgoRefresh] minutes
@@ -116,6 +126,8 @@ var (
 	mandrillAPIUrl = "https://mandrillapp.com/api/1.0/"
 )
 var (
+	mailform *mbox.Form
+	
 	// ErrNoReferer is returned when a HTTPS request provides an empty Referer
 	// header.
 	ErrNoReferer = errors.New("referer not supplied")
@@ -127,6 +139,7 @@ var (
 	// ErrBadToken is returned if the CSRF token in the request does not match
 	// the token in the session, or is otherwise malformed.
 	ErrBadToken = errors.New("CSRF token invalid, yo")
+	
 )
 
 const (
@@ -147,7 +160,6 @@ var (
 	static       = flag.Bool("static", true, "Serve /static/ files. Use -static=false to disable")
 	files        = flag.Bool("files", true, "Serve /files/ files. Use -files=false to disable")
 	noredirect   = flag.Bool("noredirect", false, "Default is to redirect all 404s back to /. \nSet true to enable error.html template")
-	love         = flag.Bool("love", false, "Fun. Show I love ___ instead of redirect")
 	config       = flag.Bool("config", false, "Use config file at ~/.cosgo")
 	custom       = flag.String("custom", "default", "Example: cosgo2 ...creates $HOME/.cosgo2")
 	logpath      = flag.String("log", "cosgo.log", "Example: /dev/null or /var/log/cosgo/log")
@@ -156,8 +168,9 @@ var (
 	form         = flag.Bool("form", false, "Use /page/index.html and /templates/form.html, \nsets -pages flag automatically.")
 	pages        = flag.Bool("pages", false, "Serve /page/")
 	sendgridflag = flag.Bool("sendgrid", false, "Set -sendgrid to not use local mailbox. This automatically sets \"-mailmode sendgrid\"")
-	resolvemail  = flag.Bool("resolvemail", false, "Set true to check email addresses")
+	resolvemail  = flag.Bool("resolvemail", false, "Set true to check email addresses (Outgoing traffic)")
 	custompages  = flag.String("custompages", "page", "Serve pages from X dir")
+	gpg          = flag.String("gpg", "", "Path to gpg Public Key (automatically encrypts messages)")
 	mailbox      = true
 )
 
@@ -321,6 +334,10 @@ func main() {
 		if !*nolog {
 			fmt.Println("\t[logs: " + *logpath + "]")
 		}
+		if *gpg != "" {
+			fmt.Println("\t[gpg pubkey: " + *gpg + "]")
+			publicKey = read2mem(rel2real(*gpg))
+		}
 		if *config {
 			fmt.Println("\t[config: " + *custom + "]")
 		}
@@ -449,9 +466,6 @@ func main() {
 		r.Methods("GET").Path("/" + *custompages + "/{dir}/{whatever}.html").Handler(sp)
 	}
 
-	if *love == true {
-		r.HandleFunc("/{whatever}", loveHandler)
-	}
 	if *pages == true {
 		r.HandleFunc("/"+*custompages+"{whatever}", pageHandler)
 	}
@@ -481,7 +495,7 @@ func main() {
 		mbox.Mail = log.New(f, "", 0)
 
 	}
-	// Right-clickable link
+	// Display right-clickable link
 	if *debug && !*quiet {
 		log.Printf("Link: " + getLink(*fastcgi, *bind, *port))
 	}
@@ -537,7 +551,7 @@ func main() {
 					} else {
 						log.Fatalln("nil listener")
 					}
-				case true: //
+				case true: // Fastcgi + https
 					if listener != nil {
 						go fcgi.Serve(listener,
 							csrf.Protect(antiCSRFkey,
@@ -551,7 +565,7 @@ func main() {
 				}
 			case false:
 				switch *secure {
-				case true: // https://, no fastcgi
+				case true: // https:// only, no fastcgi
 					if listener != nil {
 						go http.Serve(listener,
 							csrf.Protect(antiCSRFkey,
@@ -561,7 +575,7 @@ func main() {
 					} else {
 						log.Fatalln("nil listener")
 					}
-				case false: // This is using http://, no fastcgi.
+				case false: // no https, no fastcgi.
 					if listener != nil {
 						go http.Serve(listener,
 							csrf.Protect(antiCSRFkey,
@@ -607,6 +621,7 @@ func getMandrillKey() string {
 	return mandrillKey
 }
 
+// parseQuery sanitizes inputs and gets ready to save to mbox
 func parseQuery(query url.Values) *Form {
 	p := bluemonday.UGCPolicy()
 	form := new(Form)
@@ -639,14 +654,29 @@ func parseQuery(query url.Values) *Form {
 
 		}
 	}
+	if publicKey != nil {
+		log.Println("Got form. Encoding it.")
+		tmpmsg, err := pgpEncode(form.Message, publicKey)
+		if err != nil {
+			log.Println("gpg error.")
+			log.Println(err)
+		} else {
+			log.Println("No GPG error.")
+			form.Message = tmpmsg
+		}
+	}
 	return form
 }
+
+// getDomain returns the domain name (without port) of a request.
 func getDomain(r *http.Request) string {
 	type Domains map[string]http.Handler
 	hostparts := strings.Split(r.Host, ":")
 	requesthost := hostparts[0]
 	return requesthost
 }
+
+// getSubdomain returns the subdomain (if any)
 func getSubdomain(r *http.Request) string {
 	type Subdomains map[string]http.Handler
 	hostparts := strings.Split(r.Host, ":")
@@ -679,10 +709,60 @@ func generateAPIKey(n int) string {
 	return strings.TrimSpace(string(b))
 }
 
-func pgpEncode(plain string) (ciphertext string) {
-	ciphertext = plain
-	return ciphertext
+func rel2real(file string) (realpath string) {
+	pathdir, _ := path.Split(file)
+
+	if pathdir == "" {
+		realpath, _ = filepath.Abs(file)
+	} else {
+		realpath = file
+	}
+	return realpath
 }
 
-// Copyright 2016 aerth and contributors. Source code at https://github.com/aerth/cosgo
+func read2mem(abspath string) []byte {
+file, err := os.Open(abspath) // For read access.
+if err != nil {
+	log.Fatal(err)
+}
+
+data := make([]byte, 4096)
+_, err = file.Read(data)
+if err != nil {
+	log.Fatal(err)
+}
+
+
+return data
+
+
+}
+
+func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
+	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Encrypt message using public key
+	buf := new(bytes.Buffer)
+	w, err := openpgp.Encrypt(buf, entitylist, nil, nil, nil)
+	if err != nil {
+	}
+	_, err = w.Write([]byte(plain))
+	if err != nil {
+	}
+	err = w.Close()
+	if err != nil {
+	}
+
+	// Output as base64 encoded string
+	bytes, err := ioutil.ReadAll(buf)
+	encStr = base64.StdEncoding.EncodeToString(bytes)
+
+	return encStr, nil
+}
+
+// Copyright 2016 aerth. All Rights Reserved.
+// Full source code at https://github.com/aerth/cosgo
 // There should be a copy of the MIT license bundled with this software.
