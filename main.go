@@ -127,7 +127,7 @@ var (
 )
 var (
 	mailform *mbox.Form
-	
+
 	// ErrNoReferer is returned when a HTTPS request provides an empty Referer
 	// header.
 	ErrNoReferer = errors.New("referer not supplied")
@@ -139,7 +139,6 @@ var (
 	// ErrBadToken is returned if the CSRF token in the request does not match
 	// the token in the session, or is otherwise malformed.
 	ErrBadToken = errors.New("CSRF token invalid, yo")
-	
 )
 
 const (
@@ -721,20 +720,18 @@ func rel2real(file string) (realpath string) {
 }
 
 func read2mem(abspath string) []byte {
-file, err := os.Open(abspath) // For read access.
-if err != nil {
-	log.Fatal(err)
-}
+	file, err := os.Open(abspath) // For read access.
+	if err != nil {
+		log.Fatal(err)
+	}
 
-data := make([]byte, 4096)
-_, err = file.Read(data)
-if err != nil {
-	log.Fatal(err)
-}
+	data := make([]byte, 4096)
+	_, err = file.Read(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-
-return data
-
+	return data
 
 }
 

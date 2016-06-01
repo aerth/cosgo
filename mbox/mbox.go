@@ -236,7 +236,7 @@ func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
 	}
 	// Encrypt message using public key
 	w, err := openpgp.Encrypt(abuf, entitylist, nil, nil, nil)
-
+	defer w.Close()
 	if err != nil {
 		return "", err
 	}
@@ -244,11 +244,12 @@ func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
 	if err != nil {
 		return "", err
 	}
+
 	err = w.Close()
 	if err != nil {
 		return "", err
 	}
-
+	abuf.Close()
 	// Output as base64 encoded string
 	bytes, err := ioutil.ReadAll(buf)
 
