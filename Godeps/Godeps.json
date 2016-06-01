@@ -1,7 +1,10 @@
 {
 	"ImportPath": "github.com/aerth/cosgo",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v62",
+	"GodepVersion": "v69",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/aerth/seconf",
@@ -18,21 +21,23 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
-			"Rev": "1ea25387ff6f684839d82767c1733ff4d4d15d0a"
+			"Comment": "v1.1-2-ga8d44e7",
+			"Rev": "a8d44e7d8e4d532b6a27a02dd82abb31cc1b01bd"
 		},
 		{
 			"ImportPath": "github.com/gorilla/csrf",
-			"Comment": "v1.3-2-gc96d74a",
-			"Rev": "c96d74a9893eef5655b34d429ababb7843a0f58d"
+			"Comment": "v1.3-4-g5827652",
+			"Rev": "58276522e5876c9497f406c0212e46f8c7b9999d"
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
-			"Comment": "v1.1",
-			"Rev": "0eeaf8392f5b04950925b8a69fe70f110fa7cbfc"
+			"Comment": "v1.1-7-g9c19ed5",
+			"Rev": "9c19ed558d5df4da88e2ade9c8940d742aef0e7e"
 		},
 		{
 			"ImportPath": "github.com/gorilla/securecookie",
-			"Rev": "8dacca26977607e637262eb66b15b7d39f2d3009"
+			"Comment": "v1.1",
+			"Rev": "667fe4e3466a040b780561fe9b51a83a3753eefc"
 		},
 		{
 			"ImportPath": "github.com/goware/emailx",
@@ -44,8 +49,8 @@
 		},
 		{
 			"ImportPath": "github.com/keighl/mandrill",
-			"Comment": "1.1.0",
-			"Rev": "5d7133fb578a9504f8ab549737c993422f65a000"
+			"Comment": "1.1.0-2-g6a59523",
+			"Rev": "6a59523fcf7d27e9230141f0e2563ba976a92b8f"
 		},
 		{
 			"ImportPath": "github.com/microcosm-cc/bluemonday",
@@ -53,33 +58,61 @@
 		},
 		{
 			"ImportPath": "github.com/sendgrid/sendgrid-go",
-			"Comment": "v2.0.0-19-gd88aa4d",
-			"Rev": "d88aa4dd8b2a9df3a9693d35d4d0f686b3bcff9a"
+			"Comment": "v2.0.0-22-g6ea8b2b",
+			"Rev": "6ea8b2b2d54b2e54efcf8668867289a1838d96fd"
 		},
 		{
 			"ImportPath": "github.com/sendgrid/smtpapi-go",
-			"Comment": "v0.4.0-1-gb616837",
-			"Rev": "b616837442153d876b2d0b84d09e5e48a2aa91ee"
+			"Comment": "v0.4.0-7-gb88787c",
+			"Rev": "b88787cc8801ef961d7daef0bcb79ae3f50bfd52"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/cast5",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
-			"Rev": "b8a0f4bb4040f8d884435cff35b9691e362cf00c"
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/armor",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/elgamal",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/errors",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/packet",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/s2k",
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/poly1305",
-			"Rev": "b8a0f4bb4040f8d884435cff35b9691e362cf00c"
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
-			"Rev": "b8a0f4bb4040f8d884435cff35b9691e362cf00c"
+			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html",
-			"Rev": "fb93926129b8ec0056f2f458b1f519654814edf0"
+			"Rev": "35ec611a141ee705590b9eb64d673f9e6dfeb1ac"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html/atom",
-			"Rev": "fb93926129b8ec0056f2f458b1f519654814edf0"
+			"Rev": "35ec611a141ee705590b9eb64d673f9e6dfeb1ac"
 		}
 	]
 }
