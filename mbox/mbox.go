@@ -1,5 +1,3 @@
-// Package mbox saves a form to a local .mbox file
-
 // The MIT License (MIT)
 //
 // Copyright (c) 2016 aerth
@@ -23,7 +21,7 @@
 // SOFTWARE.
 //
 
-// mbox library stores a form to a .mbox file
+// Package mbox saves a form to a local .mbox file (opengpg option)
 package mbox
 
 import (
@@ -56,7 +54,8 @@ var ValidationLevel = 1
 // Destination is the address where mail is "sent", its useful to change this to the address you will be replying to.
 var Destination = "mbox@localhost"
 var (
-	Mail *log.Logger // local mbox
+	// Mail is the local mbox, implemented as a logger
+	Mail *log.Logger
 )
 
 // Open sets the logger up and allows an application to customize the mailbox name. ( step 1 )
@@ -72,7 +71,7 @@ func Open(file string) error {
 	return nil
 }
 
-// PraseForm parses a url submitted query and returns a mbox.Form
+// ParseFormGPG parses a url submitted query and returns a mbox.Form
 func ParseFormGPG(destination string, query url.Values, publicKey []byte) (form *Form) {
 	Destination = destination
 	form = ParseQueryGPG(query, publicKey)
@@ -80,13 +79,6 @@ func ParseFormGPG(destination string, query url.Values, publicKey []byte) (form 
 }
 
 /*
-// PraseForm parses a url submitted query and returns a mbox.Form
-func ParseFormGPG(destination string, query url.Values, publicKey string) (form *Form) {
-	Destination = destination
-	form = parseQueryGPG(query, publicKey)
-	return form
-}
-*/
 // ParseAndSave parses a url submitted query and sends it to Send as a mbox.Form
 func ParseAndSave(destination string, query url.Values) (err error) {
 	Destination = destination
@@ -94,6 +86,7 @@ func ParseAndSave(destination string, query url.Values) (err error) {
 	err = Save(form)
 	return err
 }
+*/
 
 // Save saves an mbox file from a mbox.Form!
 func Save(form *Form) error {
@@ -130,7 +123,7 @@ func Save(form *Form) error {
 	return nil
 }
 
-// parseQuery returns a mbox.Form from a url.Values
+// ParseQuery returns a mbox.Form from url.Values
 func ParseQuery(query url.Values) *Form {
 	p := bluemonday.StrictPolicy()
 	form := new(Form)
@@ -164,7 +157,7 @@ func ParseQuery(query url.Values) *Form {
 	return form
 }
 
-// parseQueryGPG returns a mbox.Form from a url.Values but encodes the form.Message
+// ParseQueryGPG returns a mbox.Form from a url.Values but encodes the form.Message if publicKey is not nil
 func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
 	p := bluemonday.StrictPolicy()
 	form := new(Form)
@@ -209,6 +202,8 @@ func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
 	}
 	return form
 }
+
+// rel2real Relative to Real
 func rel2real(file string) (realpath string) {
 	pathdir, _ := path.Split(file)
 
@@ -220,6 +215,7 @@ func rel2real(file string) (realpath string) {
 	return realpath
 }
 
+// PGPEncode handles the actual encrypting of the message. Outputs ascii armored gpg message or an error.
 func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
 
 	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
@@ -234,7 +230,6 @@ func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
 	if err != nil {
 		return "", err
 	}
-	// Encrypt message using public key
 	w, err := openpgp.Encrypt(abuf, entitylist, nil, nil, nil)
 	defer w.Close()
 	if err != nil {
@@ -252,11 +247,10 @@ func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
 		return "", err
 	}
 	abuf.Close()
-	// Output as base64 encoded string
+
 	bytes, err := ioutil.ReadAll(buf)
 
 	encStr = string(bytes)
-	//	encStr = base64.StdEncoding.EncodeToString(bytes)
 
 	return encStr, nil
 }

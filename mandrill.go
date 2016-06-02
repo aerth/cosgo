@@ -16,13 +16,13 @@ import (
 )
 
 func canMandrill() bool {
-	user_count_url := mandrillAPIUrl + "users/info.json"
+	uinfo := mandrillAPIUrl + "users/info.json"
 	var jsonStr = []byte(`
 	{
 	    "key": "` + mandrillKey + `"
 	}`)
 
-	req, err := http.NewRequest("POST", user_count_url, bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", uinfo, bytes.NewBuffer(jsonStr))
 	req.Header.Set("X-Custom-Header", "key")
 	req.Header.Set("Content-Type", "application/json")
 
@@ -34,9 +34,9 @@ func canMandrill() bool {
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	split := strings.SplitAfter(string(body), "last_30_days\":{\"sent\":")
-	sent_str := strings.SplitAfter(split[1], ",")[0]
-	send_count, _ := strconv.Atoi(sent_str[:len(sent_str)-1])
-	if send_count >= 10000 {
+	sentString := strings.SplitAfter(split[1], ",")[0]
+	sendCount, _ := strconv.Atoi(sentString[:len(sentString)-1])
+	if sendCount >= 10000 {
 		log.Fatal("Monthly quota reached")
 		return false
 	}

@@ -49,17 +49,22 @@ func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string,
 	}
 	//Normalize email address
 	form.Email = emailx.Normalize(form.Email)
-	//Is it empty?
+	// Is it empty?
 	if form.Email == "" || form.Email == "@" {
 		return errors.New("Bad email address.")
 	}
 
-	if ok, msg := sendgridSend(destination, form); ok == true {
+	// Looks good! Lets send it to sendgrid!
+	ok, msg := sendgridSend(destination, form)
+
+	// Is good send!
+	if ok == true {
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		log.Printf(msg+" %s at %s", r.UserAgent(), r.RemoteAddr)
 		return nil
-	} else {
-		log.Printf(msg+" %s at %s", r.UserAgent(), r.RemoteAddr)
-		return errors.New(msg)
 	}
+
+	// Wasnt good. Sending msg to log in case it was important.
+	log.Printf(msg+" %s at %s", r.UserAgent(), r.RemoteAddr)
+	return errors.New(msg)
 }

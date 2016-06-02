@@ -73,8 +73,9 @@ var (
 	err              error
 	hitcounter       int
 	boottime         time.Time
-	Version          = "0.8-go-get"
-	publicKey        []byte
+	// Version is modified by cgo linker when compiled using "make"
+	Version   = "0.8-go-get"
+	publicKey []byte
 )
 
 // Cosgo - This changes every [cosgoRefresh] minutes
@@ -93,16 +94,17 @@ type C struct {
 	CaptchaID string
 }
 
+/* With these settings, the captcha string will be from 3 to 5 characters. */
 const (
-	/* With these settings, the captcha string will be from 3 to 5 characters. */
 	// CaptchaLength is the minimum captcha string length.
 	CaptchaLength = 3
-	// Captcha will add *up to* CaptchaVariation to the CaptchaLength
+	// CaptchaVariation will add *up to* CaptchaVariation to the CaptchaLength
 	CaptchaVariation = 2
-	CollectNum       = 100
-	Expiration       = 10 * time.Minute
-	StdWidth         = 240
-	StdHeight        = 90
+	// CollectNum triggers a garbage collection routine after X captchas are created.
+	CollectNum = 100
+	Expiration = 10 * time.Minute
+	StdWidth   = 240
+	StdHeight  = 90
 )
 
 //usage shows how and available flags.
@@ -230,7 +232,7 @@ func main() {
 		time.Sleep(5 * time.Second)
 	}
 
-	// nolog flag = no output whatsoever. Equivilent of -quiet -logpath=/dev/null
+	// nolog flag = no output whatsoever. Equivalent of -quiet -logpath=/dev/null
 	if *nolog {
 		*quiet = true
 		if runtime.GOOS == "windows" { // fix for windows soon
