@@ -1,6 +1,8 @@
 ## cosgo
 when all you needed was a contact form, anyways.
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/aerth/cosgo)](https://goreportcard.com/report/github.com/aerth/cosgo)
+
 * Save the mail: Contact form saves messages to a local mbox file
 * Read the mail with: `mutt -Rf cosgo.mbox`
 * Option to send mail using SMTP, with Sendgrid (free) or Mandrill (not free).
