@@ -64,7 +64,7 @@ func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string,
 		return nil
 	}
 
-	// Wasnt good. Sending msg to log in case it was important.
+	// The send wasn't good. Sending msg to log in case it was important.
 	log.Printf(msg+" %s at %s", r.UserAgent(), r.RemoteAddr)
 	return errors.New(msg)
 }

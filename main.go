@@ -90,10 +90,6 @@ type Cosgo struct {
 
 var cosgo = new(Cosgo)
 
-type C struct {
-	CaptchaID string
-}
-
 /* With these settings, the captcha string will be from 3 to 5 characters. */
 const (
 	// CaptchaLength is the minimum captcha string length.
@@ -143,7 +139,6 @@ const (
 )
 
 var (
-	// TODO: dont use flags. Will be using env/seconf only. seconf is an environmental variable based configuration system. Try cosgo -config
 	help         = flag.Bool("help", false, "Show this and quit")
 	port         = flag.String("port", "8080", "Port to listen on")
 	bind         = flag.String("bind", "0.0.0.0", "Default: 0.0.0.0 (all interfaces)...\nTry -bind=127.0.0.1")
@@ -167,22 +162,6 @@ var (
 	gpg          = flag.String("gpg", "", "Path to gpg Public Key (automatically encrypts messages)")
 	mailbox      = true
 )
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-
-
- */
 
 func main() {
 
@@ -217,12 +196,11 @@ func main() {
 		log.Fatalln(err)
 	}
 	cosgo.Dir = cwd + "/"
-	// Custom refresh time
-	// Example: COSGOREFRESH=10m cosgo -debug
+	// Custom refresh time Example: COSGOREFRESH=10m cosgo -debug
 	if os.Getenv("COSGOREFRESH") != "" {
 		cosgoRefresh, err = time.ParseDuration(os.Getenv("COSGOREFRESH"))
 		if err != nil {
-			log.Println(err.Error() + "... Using default (42m).")
+			log.Println(err.Error() + "... Using default (42.0m).")
 			cosgoRefresh = 42 * time.Minute
 		}
 	}
@@ -516,12 +494,13 @@ func main() {
 	if *debug && !*quiet {
 		log.Printf("Info: Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
 	}
-	go func() {
 
+	go func() {
 		boottime := time.Now()
 		cosgo.Boottime = boottime
 
 	}()
+
 	// Start Serving Loop
 	for {
 		listener, err = sl.New(oglistener)
@@ -615,54 +594,6 @@ func getMandrillKey() string {
 	return mandrillKey
 }
 
-/*
-// parseQuery sanitizes inputs and gets ready to save to mbox
-func parseQuery(query url.Values) *Form {
-	p := bluemonday.UGCPolicy()
-	form := new(Form)
-	additionalFields := ""
-	for k, v := range query {
-		k = strings.ToLower(k)
-		if k == "email" {
-			form.Email = v[0]
-			//} else if (k == "name") {
-			//	form.Name = v[0]
-		} else if k == "subject" {
-			form.Subject = v[0]
-			form.Subject = p.Sanitize(form.Subject)
-		} else if k == "message" {
-			form.Message = k + ": " + v[0] + "<br>\n"
-			form.Message = p.Sanitize(form.Message)
-		} else if k != "cosgo" && k != "captchaid" && k != "captchasolution" {
-			additionalFields = additionalFields + k + ": " + v[0] + "<br>\n"
-		}
-	}
-	if form.Subject == "" {
-		form.Subject = "[New Message]"
-	}
-	if additionalFields != "" {
-		if form.Message == "" {
-			form.Message = form.Message + "Message:\n<br>" + p.Sanitize(additionalFields)
-
-		} else {
-			form.Message = form.Message + "\n<br>Additional:\n<br>" + p.Sanitize(additionalFields)
-
-		}
-	}
-	if publicKey != nil {
-		log.Println("Got form. Encoding it.")
-		tmpmsg, err := mbox.PGPEncode(form.Message, publicKey)
-		if err != nil {
-			log.Println("gpg error.")
-			log.Println(err)
-		} else {
-			log.Println("No GPG error.")
-			form.Message = tmpmsg
-		}
-	}
-	return form
-}*/
-
 // getDomain returns the domain name (without port) of a request.
 func getDomain(r *http.Request) string {
 	type Domains map[string]http.Handler
@@ -730,36 +661,6 @@ func read2mem(abspath string) []byte {
 	return data
 
 }
-
-/*
-func pgpEncode(plain string, publicKey []byte) (encStr string, err error) {
-	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
-	if err != nil {
-	return plain, err
-	}
-
-	// Encrypt message using public key
-	buf := new(bytes.Buffer)
-	w, err := openpgp.Encrypt(buf, entitylist, nil, nil, nil)
-	if err != nil {
-	return plain, err
-	}
-	_, err = w.Write([]byte(plain))
-	if err != nil {
-	return plain, err
-	}
-	err = w.Close()
-	if err != nil {
-	}
-
-	// Output as base64 encoded string
-	bytes, err := ioutil.ReadAll(buf)
-	encStr = base64.StdEncoding.EncodeToString(bytes)
-
-	return encStr, nil
-}
-
-*/
 
 // Copyright 2016 aerth. All Rights Reserved.
 // Full source code at https://github.com/aerth/cosgo
