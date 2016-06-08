@@ -4,19 +4,20 @@
 # yo type "make cross" to cross compile!
 # for releases i use https://github.com/aerth/hashsum
 NAME=cosgo
-VERSION=0.7
-RELEASE:=${VERSION}.$(shell git rev-parse --verify --short HEAD)
-GO_LDFLAGS=-ldflags "-X main.Version=$(RELEASE)"
+VERSION=0.9
+RELEASE:=${VERSION}.X${COMMIT}
+COMMIT=$(shell git rev-parse --verify --short HEAD)
+GO_LDFLAGS=-ldflags "-X main.version=$(RELEASE)"
 PREFIX=/usr/local
 PREFIX?=$(shell pwd)
 ifeq (,${GOPATH})
 export GOPATH=/tmp/gopath
 endif
-all: deps
+all:
 	set -e
 	go fmt
 #	go vet
-	mkdir bin || true
+	mkdir -p bin
 	go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE} && echo Built ${NAME}-${RELEASE}
 	chmod 755 bin/${NAME}-v${RELEASE}
 

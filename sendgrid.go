@@ -11,15 +11,16 @@ import (
 	sendgrid "github.com/sendgrid/sendgrid-go"
 )
 
-// Form is our email
+// Form is our email struct
 type Form struct {
 	Name, Email, Subject, Message string
 }
 
-// sendgridSend connects to the Sendgrid API and processes the form.
-func sendgridSend(destinationEmail string, form *mbox.Form) (ok bool, msg string) {
+// sendgridSend connects to the Sendgrid API and sends the form as an email to destinationEmail.
+func sendgridder(destinationEmail string, form *mbox.Form) (ok bool, msg string) {
+
 	//log.Println("Key: " + sendgridKey) // debug sendgrid
-	sg := sendgrid.NewSendGridClientWithApiKey(sendgridKey)
+	sg := sendgrid.NewSendGridClientWithApiKey(*sendgridKey)
 	message := sendgrid.NewMail()
 	message.AddTo(destinationEmail)
 	message.SetFrom(form.Email)
@@ -33,7 +34,7 @@ func sendgridSend(destinationEmail string, form *mbox.Form) (ok bool, msg string
 	return false, string("Sendgrid Error:" + r.Error())
 }
 
-// sendgridSender always returns success for the visitor. This function needs some work.
+// sendgridSender
 func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
 	form := mbox.ParseQuery(query)
 	//Validate user submitted email address
@@ -55,7 +56,7 @@ func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string,
 	}
 
 	// Looks good! Lets send it to sendgrid!
-	ok, msg := sendgridSend(destination, form)
+	ok, msg := sendgridder(destination, form)
 
 	// Is good send!
 	if ok == true {
