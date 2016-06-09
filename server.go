@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aerth/cosgo/mbox"
+	"github.com/aerth/mbox"
 
 	"github.com/dchest/captcha"
 	"github.com/gorilla/csrf"

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/aerth/cosgo/mbox"
+	"github.com/aerth/mbox"
 	"github.com/goware/emailx"
 	sendgrid "github.com/sendgrid/sendgrid-go"
 )

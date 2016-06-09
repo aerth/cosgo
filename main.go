@@ -51,7 +51,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aerth/cosgo/mbox"
+	"github.com/aerth/mbox"
 
 	"github.com/gorilla/csrf"
 	sl "github.com/hydrogen18/stoppableListener"
