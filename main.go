@@ -58,7 +58,7 @@ import (
 )
 
 var (
-	version          = "0.9-go-get"
+	version          = "0.9.G"
 	destinationEmail = "cosgo@localhost"
 	antiCSRFkey      = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	cosgoRefresh     = 42 * time.Minute
@@ -83,9 +83,10 @@ var (
 	mboxfile        = flag.String("mbox", "cosgo.mbox", "Custom mbox file name\n\tExample: -mbox custom.mbox")
 )
 
+// Cosgo struct holds the Boottime and
 type Cosgo struct {
-	PostKey  string
-	Boottime time.Time
+	URLKey   string
+	Visitors int
 }
 
 func main() {
@@ -108,13 +109,15 @@ func main() {
 	go func() {
 		for {
 			if *debug && !*quiet {
-				log.Println("Info: Generating Random POST Key...")
+				log.Println("Info: Generating Random 40 URL Key...")
 			}
-			cosgo.PostKey = generateAPIKey(40)
+			// set a random URL key (40 char length)
+			cosgo.URLKey = generateURLKey(40)
 			if *debug && !*quiet {
-				log.Printf("Info: POST Key is " + cosgo.PostKey + "\n")
+				log.Printf("Info: URL Key is " + cosgo.URLKey + "\n")
 			}
-			time.Sleep(cosgoRefresh) // Internal cron!!!
+			// every X minutes
+			time.Sleep(cosgoRefresh)
 		}
 	}()
 
@@ -311,7 +314,7 @@ func staticFinder(cwd string) string {
 }
 
 func getKey() string {
-	return cosgo.PostKey
+	return cosgo.URLKey
 }
 func getDestination() string {
 	return destinationEmail
@@ -368,10 +371,9 @@ func getSubdomain(r *http.Request) string {
 	return ""
 }
 
-var runes = []rune("____ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890123456789012345678901234567890")
-
-//generateAPIKey does API Key Generation with the given runes.
-func generateAPIKey(n int) string {
+//generateURLKey creates a new key, with the given runes, n length.
+func generateURLKey(n int) string {
+	runes := []rune("____ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890123456789012345678901234567890")
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = runes[rand.Intn(len(runes))]

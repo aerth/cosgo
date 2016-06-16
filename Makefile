@@ -2,11 +2,21 @@
 # https://github.com/aerth
 NAME=cosgo
 VERSION=0.9
-RELEASE:=${VERSION}.X${COMMIT}
 COMMIT=$(shell git rev-parse --verify --short HEAD)
+RELEASE:=${VERSION}.X${COMMIT}
+
+
+# Build a static linked binary
+export CGO_ENABLED=0
+
+# Embed commit version into binary
 GO_LDFLAGS=-ldflags "-X main.version=$(RELEASE)"
-PREFIX=/usr/local
-PREFIX?=$(shell pwd)
+
+# Install to /usr/local/
+#PREFIX=/usr/local
+PREFIX?=/usr/local
+
+# Set temp gopath if none exists
 ifeq (,${GOPATH})
 export GOPATH=/tmp/gopath
 endif
@@ -43,8 +53,11 @@ cross:
 	GOOS=netbsd GOARCH=amd64 go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}-netbsd-amd64
 	GOOS=netbsd GOARCH=386 go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}-netbsd-x86
 	echo ${RELEASE} > bin/VERSION
-	for i in $(ls ./bin/); do sha384sum $i >> bin/HASH; done
 
-package: cross
-	for i in $(ls ./bin/ | grep "-v"); do zip $i.zip $i README.md LICENSE.md HASH; done
+
+# package target is not working out, moved to a shell script named "package.bash"
+package:
+	mkdir -p pkg
+	for i in $(shell ls bin); do sha384sum bin/$i >> HASH; done
+	for i in $(shell ls bin); do zip $i.zip bin/$i README.md LICENSE.md HASH; done
 
