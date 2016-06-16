@@ -52,12 +52,9 @@ cross:
 	GOOS=openbsd GOARCH=386 go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}-openbsd-x86
 	GOOS=netbsd GOARCH=amd64 go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}-netbsd-amd64
 	GOOS=netbsd GOARCH=386 go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}-netbsd-x86
-	echo ${RELEASE} > bin/VERSION
+	@echo ${RELEASE} > bin/VERSION
+	@echo "Now run ./pack.bash"
 
-
-# package target is not working out, moved to a shell script named "package.bash"
+# package target is not working out, moved to a shell script named "pack.bash"
 package:
-	mkdir -p pkg
-	for i in $(shell ls bin); do sha384sum bin/$i >> HASH; done
-	for i in $(shell ls bin); do zip $i.zip bin/$i README.md LICENSE.md HASH; done
-
+	@echo "Run ./pack.bash"
