@@ -3,16 +3,14 @@ when all you needed was a contact form, anyways.
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/aerth/cosgo)](https://goreportcard.com/report/github.com/aerth/cosgo)
 
-* Save the mail: Contact form saves messages to a local mbox file
-* Read the mail with: `mutt -Rf cosgo.mbox`
-* Option to send mail using SMTP, with Sendgrid (free) or Mandrill (not free).
+* Save the mail: Contact form saves messages to a local .mbox file
+* Read the mail with something like: `mutt -Rf cosgo.mbox`
+* Option to send mail using Sendgrid
+* Option to use GPG for encrypting the messages
 * Customize: Uses Go style templates, `templates/index.html` and `templates/error.html`
-* Static Files: /sitemap.xml /favicon.ico, /robots.txt. Limited to .woff, .ttf, .css, .js .png .jpg
+* Static Files: /sitemap.xml /favicon.ico, /robots.txt. Limited to .woff, .ttf, .css, .js .png .jpg and custom -ext flag
 * You can stuff .zip, .tgz. .tar, .tar.gz files in /files/ and cosgo will serve them, too.
-* Tested on NetBSD and Debian servers, even runs on Windows. Probably runs great on anything else, too.
-* This needs some testing on other setups! If you use cosgo, I would love to hear from you! https://isupon.us
-* Now with -pages and -nolog and more in `cosgo --help`
-* Now with GPG encryption (optional)
+* Easy to convert static web sites to cosgo template.
 
 ```
 
@@ -30,16 +28,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Usage Examples
 
-
-
 ```
-cosgo -h # help
-cosgo -noredirect # show 404 pages instead of redirecting to /
-cosgo -debug # more messages and don't switch to cosgo.log
-cosgo -static=false # don't serve /static, /files or /page
-cosgo -custom "MyApp" -nolog # run our MyApp config with nolog
-cosgo --nolog # no output whatsoever
-cosgo -bind 127.0.0.1 -port 8000 -fastcgi # nginx setup
+cosgo -h # show flags
+cosgo -debug # more messages
+cosgo -nolog -quiet # no output whatsoever
+cosgo -bind 127.0.0.1 -port 8000 # nginx or hidden service setup (bind only to localhost)
+cosgo -bind 0.0.0.0 -port 8000 # listen and serve (bind to all interfaces)
 cosgo -gpg publickey.asc -debug # loads publickey.asc into memory (so you can delete it after booting cosgo if you want)
 
 ```
@@ -54,33 +48,21 @@ Releases:
 
 1. Extract the archive.
 2. Copy the binary to /usr/local/bin/ ( or extract everything to C:/cosgo/ )
-3. Copy the templates/ and static/ folder to where you are running cosgo
-4. Run `cosgo -config` from the command line.
-5. Edit templates, static files
+3. Run `cosgo` from the command line. This will listen on all interfaces, port 8080.
+4. Edit templates, static files
 
 Building from source:
 
 ```
-export GOPATH=/tmp/cosgo
-go get -v -u github.com/aerth/cosgo
-cd $GOPATH/src/github.com/aerth/cosgo
-go build
-./cosgo -h # list flags
-./cosgo -config # Creates the config ( or runs if exists )
-./cosgo -config -debug &
-firefox http://127.0.0.1:8080 # Check it out.
+# Grab latest source code ( also check https://isupon.us )
+git clone https://github.com/aerth/cosgo.git && cd cosgo
+# make deps # optional, cosgo comes with vendor directory.
 
-```
+# Build a static binary
+CGO_ENABLED=0 make
 
-or
- 
-
-```
-git clone https://github.com/aerth/cosgo.git
-cd cosgo
-make deps
-make
-sudo make install # installs to /usr/local/bin/cosgo
+# Install to /usr/local/bin/cosgo
+sudo make install
 
 ```
 
@@ -89,12 +71,10 @@ sudo make install # installs to /usr/local/bin/cosgo
 ## Theme
 
 Customize the theme by modifying ./templates/index.html and ./templates/error.html
-
-Included is the bare minimal.
-
-Upload your static .css .js .png .jpeg .woff and .ttf files in ./static/ like /static/{foldername}/whatever.css, they will be available like any typical static file server. Our routing system disables indexing.
-
-Modify your theme if it looks in /assets/.
+Included in the binary is the bare minimal. o
+If they don't exist, the templates and static directories will be created where you run cosgo from. (since v0.9)
+Upload your static .css .js .png .jpeg .woff and .ttf files in ./static/ like /static/{foldername}/whatever.css, they will be available like any typical static file server. 
+Some web design themes look in /assets, which won't be served by cosgo. `s/assets/static/` 
 
 cp favicon into static/ too. it will be served as if it were located at /favicon.ico
 
