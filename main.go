@@ -58,7 +58,7 @@ import (
 )
 
 var (
-	version          = "0.9.G"
+	version          = "0.9.G" // Use makefile for version hash
 	destinationEmail = "cosgo@localhost"
 	antiCSRFkey      = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	cosgoRefresh     = 42 * time.Minute
@@ -242,6 +242,23 @@ func openLogFile() {
 }
 
 func initialize() (time.Time, string, string, string) {
+
+	// Load environmental variables as flags
+	if os.Getenv("COSGO_PORT") == "" {
+		*port = os.Getenv("COSGO_PORT")
+	}
+
+	if os.Getenv("COSGO_BIND") == "" {
+		*bind = os.Getenv("COSGO_BIND")
+	}
+
+	if os.Getenv("COSGO_REFRESH") == "" {
+		cosgoRefresh = os.Getenv("COSGO_REFRESH")
+	}
+
+	if os.Getenv("COSGO_GPG") == "" {
+		*gpg = os.Getenv("COSGO_GPG")
+	}
 	if *gpg != "" {
 		log.Println("\t[gpg pubkey: " + *gpg + "]")
 		publicKey = read2mem(rel2real(*gpg))
