@@ -253,7 +253,10 @@ func initialize() (time.Time, string, string, string) {
 	}
 
 	if os.Getenv("COSGO_REFRESH") == "" {
-		cosgoRefresh = os.Getenv("COSGO_REFRESH")
+		cosgoRefresh, err = time.ParseDuration(os.Getenv("COSGO_REFRESH"))
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 
 	if os.Getenv("COSGO_GPG") == "" {
