@@ -19,8 +19,9 @@ import (
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	hitcounter = hitcounter + 1
+	cosgo.Visitors = hitcounter
 	if !*quiet {
-		log.Printf("Visitor: %s %s %s %s", r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
+		log.Printf("Visitor #%v: %s %s %s %s", cosgo.Visitors, r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
 	}
 
 	query, err := url.ParseQuery(r.URL.RawQuery)
@@ -135,9 +136,9 @@ func verifyKey(r *http.Request) bool {
 	userkey = strings.TrimRight(userkey, "/send")
 	// Check URL Key
 	if *debug {
-		log.Printf("\nComparing... \n\t" + userkey + "\n\t" + cosgo.PostKey)
+		log.Printf("\nComparing... \n\t" + userkey + "\n\t" + cosgo.URLKey)
 	}
-	if userkey != cosgo.PostKey {
+	if userkey != cosgo.URLKey {
 		log.Println("Key Mismatch. ", r.UserAgent(), r.RemoteAddr, r.RequestURI+"\n")
 		return false
 	}
@@ -219,6 +220,7 @@ func srvSuccess(r *http.Request, rw http.ResponseWriter, status int) {
 // serverSingle just shows one file.
 func serveSingle(pattern string, filename string) {
 	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Serving %s: %s at %s", pattern, r.UserAgent(), r.RemoteAddr)
 		http.ServeContent(w, r, filename, time.Now(), nil)
 	})
 }

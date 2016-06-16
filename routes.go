@@ -39,13 +39,16 @@ func route(cwd string, staticDir string) (r *mux.Router) {
 		r.Methods("GET").Path("/static/{dir}/{whatever}.mp3").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.m3u").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
-		r.Methods("GET").Path("/files/{whatever}.tgz").Handler(sf)
-		r.Methods("GET").Path("/files/{whatever}.txz").Handler(sf)
-		r.Methods("GET").Path("/files/{whatever}.txt").Handler(sf)
-		r.Methods("GET").Path("/files/{whatever}.tar").Handler(sf)
-		r.Methods("GET").Path("/files/{whatever}.zip").Handler(sf)
-		r.Methods("GET").Path("/files/{whatever}.tar.gz").Handler(sf)
-		r.Methods("GET").Path("/files/{whatever}.tar.bz2").Handler(sf)
+		r.Methods("GET").Path("/files/").Handler(sf)
+		/*
+			r.Methods("GET").Path("/files/{whatever}.tgz").Handler(ss)
+			r.Methods("GET").Path("/files/{whatever}.txz").Handler(ss)
+			r.Methods("GET").Path("/files/{whatever}.txt").Handler(ss)
+			r.Methods("GET").Path("/files/{whatever}.tar").Handler(ss)
+			r.Methods("GET").Path("/files/{whatever}.zip").Handler(ss)
+			r.Methods("GET").Path("/files/{whatever}.tar.gz").Handler(ss)
+			r.Methods("GET").Path("/files/{whatever}.tar.bz2").Handler(ss)
+		*/
 		if *customExtension != "" {
 			r.Methods("GET").Path("/files/{whatever}." + *customExtension).Handler(sf)
 		}
