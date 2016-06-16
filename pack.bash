@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e
 WORKDIR=$(pwd)
 package(){
+		set -e
 		echo "Using ./pkg directory"
         mkdir -p pkg
         if [ -f HASH ]; then
@@ -10,15 +10,20 @@ package(){
         fi
         cd bin
         echo "Creating HASH file"
-        for i in $(ls); do sha384sum $i >> $WORKDIR/HASH; done
+        for i in $(ls | grep -v "VERSION"); do sha384sum $i >> $WORKDIR/HASH; done
         cd $WORKDIR
         echo "Packaging all in ./bin"
-        for i in $(ls bin); do zip pkg/$i.zip bin/$i README.md LICENSE.md HASH; done
+        for i in $(ls bin|grep -v "VERSION"); do zip pkg/$i.zip bin/$i README.md LICENSE.md HASH; done
 		echo "Done."
 		echo ""
 }
 
-if [ -z $(ls bin) ]; then
+BINFILES=$(ls bin)
+if [ -z "$BINFILES" ]; then
+echo "Run 'make cross' first!"
+exit 1
+fi
+if [ ! -d bin ]; then
 echo "Run 'make cross' first!"
 exit 1
 fi
