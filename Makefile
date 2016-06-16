@@ -69,4 +69,4 @@ package:
 	@echo "Run ./pack.bash"
 
 clean:
-	rm -Rf bin pkg
+	rm -Rf bin pkg templates static cosgo.mbox cosgo.log HASH HASH.old
