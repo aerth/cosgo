@@ -78,7 +78,6 @@ var (
 	gpg             = flag.String("gpg", "", "Path to ascii-armored GPG public key (for encrypting messages.)")
 	customExtension = flag.String("ext", "", "Serve extra static files. Uses regex. \n\tExample: -ext \"pdf|txt|html\"")
 	sendgridKey     = flag.String("sg", "", "Sendgrid API key (disables mbox)")
-	digest          = flag.String("digest", "", "Set to a time of day (or night) to consolidate messages into one big one)")
 	logfile         = flag.String("log", "", "Use a log file instead of stdout\n\tExample: -log cosgo.log -debug")
 	mboxfile        = flag.String("mbox", "cosgo.mbox", "Custom mbox file name\n\tExample: -mbox custom.mbox")
 )
@@ -244,22 +243,28 @@ func openLogFile() {
 func initialize() (time.Time, string, string, string) {
 
 	// Load environmental variables as flags
-	if os.Getenv("COSGO_PORT") == "" {
+	if os.Getenv("COSGO_PORT") != "" {
 		*port = os.Getenv("COSGO_PORT")
 	}
 
-	if os.Getenv("COSGO_BIND") == "" {
+	if os.Getenv("COSGO_BIND") != "" {
 		*bind = os.Getenv("COSGO_BIND")
 	}
 
-	if os.Getenv("COSGO_REFRESH") == "" {
+	if os.Getenv("COSGO_REFRESH") != "" {
 		cosgoRefresh, err = time.ParseDuration(os.Getenv("COSGO_REFRESH"))
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}
 
-	if os.Getenv("COSGO_GPG") == "" {
+	if os.Getenv("COSGO_MBOX") != "" {
+		*mboxfile = os.Getenv("COSGO_MBOX")
+	}
+	if os.Getenv("COSGO_LOG") != "" {
+		*logfile = os.Getenv("COSGO_LOG")
+	}
+	if os.Getenv("COSGO_GPG") != "" {
 		*gpg = os.Getenv("COSGO_GPG")
 	}
 	if *gpg != "" {
@@ -270,10 +275,6 @@ func initialize() (time.Time, string, string, string) {
 	cwd, _ := os.Getwd()
 	staticDir := staticFinder(cwd)
 	templatesDir := templateFinder()
-
-	if *digest != "" && *sendgridKey == "" {
-		log.Fatalln("Check flags. Can't use -digest without -sg. Show usage with cosgo -h")
-	}
 
 	return timeboot, cwd, staticDir, templatesDir
 
