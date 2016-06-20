@@ -1,4 +1,5 @@
-# aerth [https://isupon.us]
+# cosco 
+# Copyright (c)2016 aerth <aerth@riseup.net>
 # https://github.com/aerth
 NAME=cosgo
 VERSION=0.9

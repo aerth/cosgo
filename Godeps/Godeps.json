@@ -2,17 +2,10 @@
 	"ImportPath": "github.com/aerth/cosgo",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v69",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/aerth/seconf",
-			"Rev": "7549186ca0acade5fb5e24a03b2a75c8ae595f6b"
-		},
-		{
-			"ImportPath": "github.com/bgentry/speakeasy",
-			"Rev": "36e9cfdd690967f4f690c6edcc9ffacd006014a0"
+			"ImportPath": "github.com/aerth/mbox",
+			"Rev": "a9225a7b300004ed7605e286ecd987dcf93d726c"
 		},
 		{
 			"ImportPath": "github.com/dchest/captcha",
@@ -48,11 +41,6 @@
 			"Rev": "dadc9ccc400c712e5a316107a5c462863919e579"
 		},
 		{
-			"ImportPath": "github.com/keighl/mandrill",
-			"Comment": "1.1.0-2-g6a59523",
-			"Rev": "6a59523fcf7d27e9230141f0e2563ba976a92b8f"
-		},
-		{
 			"ImportPath": "github.com/microcosm-cc/bluemonday",
 			"Rev": "4ac6f27528d0a3f2a59e0b0a6f6b3ff0bb89fe20"
 		},
@@ -68,10 +56,6 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/cast5",
-			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
 			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
 		},
 		{
@@ -96,14 +80,6 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/s2k",
-			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/poly1305",
-			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
 			"Rev": "019870fc9d457ee8abd13a2e93e3f2a3b55b7119"
 		},
 		{

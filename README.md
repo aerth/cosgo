@@ -7,10 +7,11 @@ when all you needed was a contact form, anyways.
 * Read the mail with something like: `mutt -Rf cosgo.mbox`
 * Option to send mail using Sendgrid
 * Option to use GPG for encrypting the messages
-* Customize: Uses Go style templates, `templates/index.html` and `templates/error.html`
-* Static Files: /sitemap.xml /favicon.ico, /robots.txt. Limited to .woff, .ttf, .css, .js .png .jpg and custom -ext flag
-* You can stuff .zip, .tgz. .tar, .tar.gz files in /files/ and cosgo will serve them, too.
-* Easy to convert static web sites to cosgo template.
+* Customize: Uses two Go style templates, `templates/index.html` and `templates/error.html`
+* Static Files: /sitemap.xml /favicon.ico, /robots.txt. Extensions limited to .woff, .ttf, .css, .js .png .jpg and custom -ext flag
+* Easy to convert static web sites to cosgo theme.
+* No database, from no log to (very verbose) debug log
+* No dependencies. Runs 'out of the box'
 
 ```
 
@@ -28,17 +29,21 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Usage Examples
 
+	First, cd into a new empty directory such as $HOME/cosgo, 
+	this will allow you to easily see which files cosgo creates on boot.
+
 ```
 cosgo -h # show flags
-cosgo -debug # more messages
+cosgo # normal boot and serve
+cosgo -debug # more verbosity
 cosgo -nolog -quiet # no output whatsoever
 cosgo -bind 127.0.0.1 -port 8000 # nginx or hidden service setup (bind only to localhost)
 cosgo -bind 0.0.0.0 -port 8000 # listen and serve (bind to all interfaces)
-cosgo -gpg publickey.asc -debug # loads publickey.asc into memory (so you can delete it after booting cosgo if you want)
+cosgo -gpg publickey.asc # loads publickey.asc into memory
 
 ```
 
-See newest version in action at https://cosgo.herokuapp.com/
+See newest version in action! It is automatically deployed at https://cosgo.herokuapp.com/
 
 -------
 
@@ -48,7 +53,7 @@ Releases:
 
 1. Extract the archive.
 2. Copy the binary to /usr/local/bin/ ( or extract everything to C:/cosgo/ )
-3. Run `cosgo` from the command line. This will listen on all interfaces, port 8080.
+3. Run `cosgo` from the command line. This will listen on all interfaces, port 8080 and create static/templates directories.
 4. Edit templates, static files
 
 Building from source:
@@ -57,7 +62,6 @@ Building from source:
 # Grab latest source code ( also check https://isupon.us )
 git clone https://github.com/aerth/cosgo.git && cd cosgo
 # make deps # optional, cosgo comes with vendor directory.
-
 # Build a static binary
 CGO_ENABLED=0 make
 
@@ -82,41 +86,6 @@ cp robot.txt into static/ too. it will be served at /robots.txt
 
 -------
 
-### Template Rules:
-
-  * Make sure your template starts with `{{define "Index"}}`
-
-  * Make sure your template ends with `{{end}}`
-
-  * And is named index.html
-
-  * Your form needs {{ .csrfField }} and `action="/{{.Key}}/send" method="POST"`
-  * The minimal captcha stuff would be:
-
-`
-    <p><img id="image" src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
- ` ,
-
- `  <input type=hidden name=captchaId value="{{.CaptchaId}}" />`
-
-  and something like:
-
-`
- <input name=captchaSolution placeholder="Enter the code to proceed" />
-`
-
-All your static files should be neatly organized in `/static/css/*.css` to be used with the templates.
-
-
-### Minimal Error template:
-
-error.html:
-`{{define "Error"}}
-Houston: We have a {{.err}} problem.
-{{end}}`
-
--------
-
 ## cron
 ```cron
 
@@ -127,7 +96,7 @@ COSGO_DESTINATION=your@email.com
 
 COSGOPORT=8080
 
-@reboot /demon/$USER/cosgo -fastcgi -port $COSGOPORT> /dev/null 2>&1
+@reboot /demon/$USER/cosgo -port $COSGOPORT> /dev/null 2>&1
 
 ```
 
@@ -138,42 +107,20 @@ COSGOPORT=8080
 
 ```nginx
 server {
-        server_name default_address;
+        server_name default_address example.com example.net;
         listen 80;
-
         location / {
-
-        proxy_pass http://127.0.0.1:8080; # Change to your static site's port
-
+        proxy_pass http://127.0.0.1:8080; # Change to your cosgo port
         }
-
 }
 
 ```
-
-or with fastcgi:
-
-```nginx
-server {
-        server_name default_address;
-        listen 80;
-
-        location / {
-
-        fastcgi_pass 127.0.0.1:8080; # no http:// with fastcgi
-        include $fastcgi_params;
-        }
-
-}
-
-```
--------
 
 # More information at Wiki
 
 More code examples at https://github.com/aerth/cosgo/wiki
 
-Please add your use case. It could make cosgo better. Report any bugs or feature requests directly at https://isupon.us ( running casgo with a pixelarity theme )
+Please add your use case. It could make cosgo better. Report any bugs or feature requests directly at https://isupon.us
 
 -------
 

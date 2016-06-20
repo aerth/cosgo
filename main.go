@@ -103,6 +103,7 @@ func main() {
 		log.Println("working dir:", cwd)
 		log.Println("css/js/img dir:", staticDir)
 		log.Println("cosgo templates dir:", templatesDir)
+		log.Printf("binding to: %s:%s", *bind, *port)
 	}
 	// Fire up the cosgo engine
 	go func() {
