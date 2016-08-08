@@ -8,7 +8,8 @@ import (
 
 	"github.com/aerth/mbox"
 	"github.com/goware/emailx"
-	sendgrid "github.com/sendgrid/sendgrid-go"
+	//sendgrid "github.com/sendgrid/sendgrid-go"
+	sendgrid "gopkg.in/sendgrid/sendgrid-go.v2"
 )
 
 // Form is our email struct

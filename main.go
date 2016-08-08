@@ -78,7 +78,7 @@ var (
 	gpg             = flag.String("gpg", "", "Path to ascii-armored GPG public key (for encrypting messages.)")
 	customExtension = flag.String("ext", "", "Serve extra static files. Uses regex. \n\tExample: -ext \"pdf|txt|html\"")
 	sendgridKey     = flag.String("sg", "", "Sendgrid API key (disables mbox)")
-	destinationEmail= flag.String("to", "", "Your email address (-sg flag required)")
+	dest            = flag.String("to", "", "Your email address (-sg flag required)")
 	logfile         = flag.String("log", "", "Use a log file instead of stdout\n\tExample: -log cosgo.log -debug")
 	mboxfile        = flag.String("mbox", "cosgo.mbox", "Custom mbox file name\n\tExample: -mbox custom.mbox")
 )
@@ -130,6 +130,9 @@ func main() {
 		log.Printf("error opening file: %v", err)
 		log.Fatal("Hint: touch ./cosgo.mbox, or chown/chmod it so that the cosgo process can access it.")
 		os.Exit(1)
+	}
+	if *dest != "" {
+		destinationEmail = *dest
 	}
 	mbox.Destination = destinationEmail
 	mbox.Mail = log.New(f, "", 0)
