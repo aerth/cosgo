@@ -22,11 +22,27 @@
 //
 
 // Package mbox saves a form to a local .mbox file (opengpg option)
+/*
+
+Usage of mbox library is as follows:
+
+Define mbox.Destination variable in your program
+
+Accept an email, populate the mbox.Form struct like this:
+	mbox.From = "joe"
+	mbox.Email = "joe@blowtorches.info
+	mbox.Message = "hello world"
+	mbox.Subject = "re: hello joe"
+	mbox.Save()
+
+
+*/
 package mbox
 
 import (
 	"bytes"
 	"errors"
+//	"fmt"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -36,24 +52,24 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp"       // pgp support
+	"golang.org/x/crypto/openpgp/armor" // armorized public key
 
-	"github.com/goware/emailx"
-	"github.com/microcosm-cc/bluemonday"
+	"github.com/goware/emailx"           // email validation
+	"github.com/microcosm-cc/bluemonday" // input sanitizaation
 )
 
-// Form is our email. No Attachments
+// Form is our email. No Attachments.
 type Form struct {
 	Name, Email, Subject, Message string
 }
 
-// ValidationLevel should be set to something other than 1 to resolve and check email addresses
-var ValidationLevel = 1
-
-// Destination is the address where mail is "sent", its useful to change this to the address you will be replying to.
-var Destination = "mbox@localhost"
 var (
+	// ValidationLevel should be set to something other than 1 to resolve hostnames and validate emails
+	ValidationLevel = 1
+	// Destination is the address where mail is "sent", its useful to change this to the address you will be replying to.
+	Destination = "mbox@localhost"
+
 	// Mail is the local mbox, implemented as a logger
 	Mail *log.Logger
 )
@@ -63,9 +79,7 @@ func Open(file string) error {
 
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
-		log.Printf("error opening file: %v", err)
-		log.Fatal("Hint: touch " + file + ", or chown/chmod it so that the cosgo process can access it.")
-		os.Exit(1)
+		return err
 	}
 	Mail = log.New(f, "", 0)
 	return nil
@@ -77,16 +91,6 @@ func ParseFormGPG(destination string, query url.Values, publicKey []byte) (form 
 	form = ParseQueryGPG(query, publicKey)
 	return form
 }
-
-/*
-// ParseAndSave parses a url submitted query and sends it to Send as a mbox.Form
-func ParseAndSave(destination string, query url.Values) (err error) {
-	Destination = destination
-	form := ParseQuery(query)
-	err = Save(form)
-	return err
-}
-*/
 
 // Save saves an mbox file from a mbox.Form!
 func Save(form *Form) error {
@@ -189,7 +193,6 @@ func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
 	}
 
 	if publicKey != nil {
-		//	log.Println("Got form. Encoding it with", publicKey)
 		tmpmsg, err := PGPEncode(form.Message, publicKey)
 		if err != nil {
 			log.Println("gpg error.")
@@ -203,7 +206,7 @@ func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
 	return form
 }
 
-// rel2real Relative to Real
+// rel2real Relative to Real path name
 func rel2real(file string) (realpath string) {
 	pathdir, _ := path.Split(file)
 
@@ -220,7 +223,7 @@ func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
 
 	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	buf := new(bytes.Buffer)
 

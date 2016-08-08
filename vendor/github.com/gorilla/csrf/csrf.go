@@ -1,12 +1,12 @@
 package csrf
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 
-	"github.com/gorilla/context"
+	"github.com/pkg/errors"
+
 	"github.com/gorilla/securecookie"
 )
 
@@ -15,11 +15,12 @@ const tokenLength = 32
 
 // Context/session keys & prefixes
 const (
-	tokenKey    string = "gorilla.csrf.Token"
-	formKey     string = "gorilla.csrf.Form"
-	errorKey    string = "gorilla.csrf.Error"
-	cookieName  string = "_gorilla_csrf"
-	errorPrefix string = "gorilla/csrf: "
+	tokenKey     string = "gorilla.csrf.Token"
+	formKey      string = "gorilla.csrf.Form"
+	errorKey     string = "gorilla.csrf.Error"
+	skipCheckKey string = "gorilla.csrf.Skip"
+	cookieName   string = "_gorilla_csrf"
+	errorPrefix  string = "gorilla/csrf: "
 )
 
 var (
@@ -127,7 +128,7 @@ func Protect(authKey []byte, opts ...Option) func(http.Handler) http.Handler {
 			cs.opts.ErrorHandler = http.HandlerFunc(unauthorizedHandler)
 		}
 
-		if cs.opts.MaxAge < 1 {
+		if cs.opts.MaxAge < 0 {
 			// Default of 12 hours
 			cs.opts.MaxAge = defaultAge
 		}
@@ -172,6 +173,16 @@ func Protect(authKey []byte, opts ...Option) func(http.Handler) http.Handler {
 
 // Implements http.Handler for the csrf type.
 func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Skip the check if directed to. This should always be a bool.
+	if val, err := contextGet(r, skipCheckKey); err == nil {
+		if skip, ok := val.(bool); ok {
+			if skip {
+				cs.h.ServeHTTP(w, r)
+				return
+			}
+		}
+	}
+
 	// Retrieve the token from the session.
 	// An error represents either a cookie that failed HMAC validation
 	// or that doesn't exist.
@@ -183,7 +194,7 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// as it will no longer match the request token.
 		realToken, err = generateRandomBytes(tokenLength)
 		if err != nil {
-			envError(r, err)
+			r = envError(r, err)
 			cs.opts.ErrorHandler.ServeHTTP(w, r)
 			return
 		}
@@ -191,16 +202,16 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Save the new (real) token in the session store.
 		err = cs.st.Save(realToken, w)
 		if err != nil {
-			envError(r, err)
+			r = envError(r, err)
 			cs.opts.ErrorHandler.ServeHTTP(w, r)
 			return
 		}
 	}
 
 	// Save the masked token to the request context
-	context.Set(r, tokenKey, mask(realToken, r))
+	r = contextSave(r, tokenKey, mask(realToken, r))
 	// Save the field name to the request context
-	context.Set(r, formKey, cs.opts.FieldName)
+	r = contextSave(r, formKey, cs.opts.FieldName)
 
 	// HTTP methods not defined as idempotent ("safe") under RFC7231 require
 	// inspection.
@@ -213,13 +224,13 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// otherwise fails to parse.
 			referer, err := url.Parse(r.Referer())
 			if err != nil || referer.String() == "" {
-				envError(r, ErrNoReferer)
+				r = envError(r, ErrNoReferer)
 				cs.opts.ErrorHandler.ServeHTTP(w, r)
 				return
 			}
 
 			if sameOrigin(r.URL, referer) == false {
-				envError(r, ErrBadReferer)
+				r = envError(r, ErrBadReferer)
 				cs.opts.ErrorHandler.ServeHTTP(w, r)
 				return
 			}
@@ -228,7 +239,7 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// If the token returned from the session store is nil for non-idempotent
 		// ("unsafe") methods, call the error handler.
 		if realToken == nil {
-			envError(r, ErrNoToken)
+			r = envError(r, ErrNoToken)
 			cs.opts.ErrorHandler.ServeHTTP(w, r)
 			return
 		}
@@ -238,7 +249,7 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Compare the request token against the real token
 		if !compareTokens(requestToken, realToken) {
-			envError(r, ErrBadToken)
+			r = envError(r, ErrBadToken)
 			cs.opts.ErrorHandler.ServeHTTP(w, r)
 			return
 		}
@@ -251,7 +262,7 @@ func (cs *csrf) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Call the wrapped handler/router on success.
 	cs.h.ServeHTTP(w, r)
 	// Clear the request context after the handler has completed.
-	context.Clear(r)
+	contextClear(r)
 }
 
 // unauthorizedhandler sets a HTTP 403 Forbidden status and writes the
