@@ -1,3 +1,3 @@
 PORT?=80
 SENDGRID?="demo"
-web: cosgo -quiet -nolog -sendgrid="$SENDGRID" -port="$PORT"
+web: cosgo -quiet -nolog -sg="$SENDGRID" -port="$PORT"
