@@ -75,10 +75,10 @@ sudo make install
 ## Theme
 
 Customize the theme by modifying ./templates/index.html and ./templates/error.html
-Included in the binary is the bare minimal. o
+Included in the binary is the bare minimal.
 If they don't exist, the templates and static directories will be created where you run cosgo from. (since v0.9)
 Upload your static .css .js .png .jpeg .woff and .ttf files in ./static/ like /static/{foldername}/whatever.css, they will be available like any typical static file server. 
-Some web design themes look in /assets, which won't be served by cosgo. `s/assets/static/` 
+Some web design themes look in /assets, which won't be served by cosgo. `s/assets/static/g` 
 
 cp favicon into static/ too. it will be served as if it were located at /favicon.ico
 
@@ -90,10 +90,6 @@ cp robot.txt into static/ too. it will be served at /robots.txt
 ```cron
 
 COSGO_DESTINATION=your@email.com
-
-# This next line turns cosgo into a normal contact form.
-#COSGO_API_KEY=contact
-
 COSGOPORT=8080
 
 @reboot /demon/$USER/cosgo -port $COSGOPORT> /dev/null 2>&1
@@ -113,6 +109,32 @@ server {
         proxy_pass http://127.0.0.1:8080; # Change to your cosgo port
         }
 }
+
+```
+
+## Fortunes
+
+Cosgo now has a random fortune for each visitor.
+Default is disabled.
+To enable it, make a file called "fortunes.txt" with **double-line separated pre-formatted text.**
+
+Such as
+
+```
+Welcome!
+
+
+Welcome!!
+```
+	 
+Here is a `shell` script that populates the file with standard unix "fortune" command.
+```
+
+#!/bin/sh
+# double line separated fortunes. some get cut off but oh well.
+echo "Populating fortunes.txt, press Ctrl C when you think its big enough."
+for i in $(cat fortunes.txt); do 
+fortune -o >> fortunes.txt && echo "" >> fortunes.txt;
 
 ```
 
