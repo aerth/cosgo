@@ -15,13 +15,15 @@ func route(cwd string, staticDir string) (r *mux.Router) {
 
 	// Home Page
 	r.HandleFunc("/", homeHandler)
+	r.HandleFunc("/pub.asc", pubkeyHandler)
+	r.HandleFunc("/pub.txt", pubkeyHandler)
 
 	// POST endpoint (emailHandler checks the key)
 	r.HandleFunc("/{{whatever}}/send", emailHandler)
 
+	//
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir)))
 	ss := http.FileServer(http.Dir(staticDir))
-	sf := http.FileServer(http.Dir(cwd + "files"))
 
 	if staticDir != "" {
 		// Serve /static folder and favicon etc
@@ -39,19 +41,7 @@ func route(cwd string, staticDir string) (r *mux.Router) {
 		r.Methods("GET").Path("/static/{dir}/{whatever}.mp3").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.m3u").Handler(s)
 		r.Methods("GET").Path("/static/{dir}/{whatever}.md").Handler(s)
-		r.Methods("GET").Path("/files/").Handler(sf)
-		/*
-			r.Methods("GET").Path("/files/{whatever}.tgz").Handler(ss)
-			r.Methods("GET").Path("/files/{whatever}.txz").Handler(ss)
-			r.Methods("GET").Path("/files/{whatever}.txt").Handler(ss)
-			r.Methods("GET").Path("/files/{whatever}.tar").Handler(ss)
-			r.Methods("GET").Path("/files/{whatever}.zip").Handler(ss)
-			r.Methods("GET").Path("/files/{whatever}.tar.gz").Handler(ss)
-			r.Methods("GET").Path("/files/{whatever}.tar.bz2").Handler(ss)
-		*/
-		if *customExtension != "" {
-			r.Methods("GET").Path("/files/{whatever}." + *customExtension).Handler(sf)
-		}
+
 	}
 
 	// Serve Captcha IMG and WAV

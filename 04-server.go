@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,17 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
+var funcMap = template.FuncMap{
+	"timesince": timesince,
+}
+
+func pubkeyHandler(w http.ResponseWriter, r *http.Request) {
+	if publicKey == nil {
+		redirecthomeHandler(w, r)
+		return
+	}
+	w.Write(publicKey)
+}
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	hitcounter = hitcounter + 1
 	cosgo.Visitors = hitcounter
@@ -59,8 +71,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	thyme := time.Now()
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
 	uptime := time.Since(timeboot).String()
-
-	t, templateerr := template.New("Index").ParseFiles(templateDir + "index.html")
+	fortune := newfortune()
+	t, templateerr := template.New("Index").Funcs(funcMap).ParseFiles(templateDir + "index.html")
 	if templateerr != nil {
 		// Something happened to the template since booting successfully. Must be 100% correct HTML syntax.
 		log.Println("Almost fatal")
@@ -73,6 +85,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			"Version":        version,
 			"Hits":           hitcounter,
 			"Uptime":         uptime,
+			"Boottime":       timeboot,
+			"Fortune":        fortune,
+			"PublicKey":      string(publicKey),
 			"Key":            getKey(),
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
@@ -98,11 +113,11 @@ func customErrorHandler(w http.ResponseWriter, r *http.Request) {
 			csrf.TemplateTag: csrf.TemplateField(r),
 		}
 		t.ExecuteTemplate(w, "Error", data)
-	} else {
-		log.Printf("template error: %q at %s", r.UserAgent(), r.RemoteAddr)
-		log.Println(err)
-		http.Redirect(w, r, "/", 301)
+		return
 	}
+	log.Printf("template error: %q at %s", r.UserAgent(), r.RemoteAddr)
+	log.Println(err)
+	http.Redirect(w, r, "/", 301)
 }
 
 // redirecthomeHandler redirects everyone home ("/") with a 301 redirect.
@@ -123,41 +138,16 @@ func verifyMethod(r *http.Request) bool {
 	return true
 }
 
+// Very primitive way of flashing a message without session info
 func srvError(r *http.Request, rw http.ResponseWriter, e int) {
-	http.Redirect(rw, r, "/?status=0&r=1#contact", http.StatusFound)
+	http.Redirect(rw, r, "/?status=0&r="+strconv.Itoa(e)+"#contact", http.StatusFound)
 	return
-	log.Fatalln("[srvError] Couldn't redirect.")
-}
-
-func verifyKey(r *http.Request) bool {
-
-	// userkey is the user submitted URL key
-	userkey := strings.TrimLeft(r.URL.Path, "/")
-	userkey = strings.TrimRight(userkey, "/send")
-	// Check URL Key
-	if *debug {
-		log.Printf("\nComparing... \n\t" + userkey + "\n\t" + cosgo.URLKey)
-	}
-	if userkey != cosgo.URLKey {
-		log.Println("Key Mismatch. ", r.UserAgent(), r.RemoteAddr, r.RequestURI+"\n")
-		return false
-	}
-
-	return true
-}
-
-func verifyCaptcha(r *http.Request) bool {
-	if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
-		log.Printf("User Error: CAPTCHA %s at %s", r.UserAgent(), r.RemoteAddr)
-		return false
-	}
-
-	return true
 }
 
 // emailHandler checks the Captcha string, and the POST key, and sends on its way.
 func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	if !verifyMethod(r) {
+		log.Println("bad method")
 		srvError(r, rw, 1)
 		return
 	}
@@ -178,7 +168,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
-	// normalize and validate email
+	// normalize and validate email, message
 	mailform := mbox.ParseFormGPG(destinationEmail, r.Form, publicKey)
 
 	// quick offline email address validation
@@ -197,18 +187,17 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 			srvError(r, rw, 5)
 			return
 		}
-
-	} else {
-		// save the message
-		saving := mbox.Save(mailform)
-		if saving != nil {
-			log.Println(saving)
-			srvError(r, rw, 6)
-			return
-		}
-
+		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+		srvSuccess(r, rw, 1)
+		return
 	}
-
+	// save the message
+	saving := mbox.Save(mailform)
+	if saving != nil {
+		log.Println(saving)
+		srvError(r, rw, 6)
+		return
+	}
 	log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 	srvSuccess(r, rw, 1)
 }
