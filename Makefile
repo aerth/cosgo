@@ -30,7 +30,6 @@ build:
 	mkdir -p bin
 	go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}
 	@echo Built ${NAME}-${RELEASE}
-	chmod 755 bin/${NAME}-v${RELEASE}
 
 install:
 	@echo installing to ${PREFIX}
