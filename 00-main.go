@@ -37,19 +37,19 @@ https://github.com/aerth/cosgo
 import (
 	"flag"
 	"fmt"
+	"github.com/aerth/mbox"
+	"github.com/aerth/seconf"
 	"log"
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/fcgi"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/aerth/mbox"
-	"github.com/aerth/seconf"
 
 	"github.com/gorilla/csrf"
 	sl "github.com/hydrogen18/stoppableListener"
@@ -77,6 +77,7 @@ var (
 	configlocation = flag.String("config", ".cosgorc", "Config: Location.\n")
 	quiet          = flag.Bool("quiet", false, "Logging: Less output. See -nolog\n")
 	nolog          = flag.Bool("nolog", false, "Logging: Logs to /dev/null")
+	fastcgi        = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
 	logfile        = flag.String("log", "", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
 	gpg            = flag.String("gpg", "", "GPG: Path to ascii-armored `public-key` to encrypt mbox\n)")
 	sendgridKey    = flag.String("sg", "", "Sendgrid: Sendgrid API `key` (disables mbox)\n")
@@ -218,19 +219,38 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		go func() {
-			if listener != nil {
-				go http.Serve(listener,
-					csrf.Protect(antiCSRFkey,
-						csrf.HttpOnly(true),
-						csrf.FieldName("cosgo"),
-						csrf.CookieName("cosgo"),
-						csrf.Secure(false))(r))
-			} else {
-				log.Fatalln("nil listener")
-			}
 
-		}()
+		if !*fastcgi {
+			go func() {
+				if listener != nil {
+					go http.Serve(listener,
+						csrf.Protect(antiCSRFkey,
+							csrf.HttpOnly(true),
+							csrf.FieldName("cosgo"),
+							csrf.CookieName("cosgo"),
+							csrf.Secure(false))(r))
+				} else {
+					log.Fatalln("nil listener")
+				}
+
+			}()
+		} else {
+			go func() {
+				if listener != nil {
+					go fcgi.Serve(listener,
+						csrf.Protect(antiCSRFkey,
+							csrf.HttpOnly(true),
+							csrf.FieldName("cosgo"),
+							csrf.CookieName("cosgo"),
+							csrf.Secure(false))(r))
+				} else {
+					log.Fatalln("nil listener")
+				}
+
+			}()
+
+		}
+
 		// End the for-loop with a timer/hit counter every 30 minutes.
 		select {
 		default:
