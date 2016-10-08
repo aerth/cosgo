@@ -61,15 +61,17 @@ func initialize() (time.Time, string, string, string) {
 		*gpg = os.Getenv("COSGO_GPG")
 	}
 	if *gpg != "" {
-		log.Println("\t[gpg pubkey: " + *gpg + "]")
+		if !*quiet {
+			log.Println("[+gpg]")
+		}
 		publicKey = read2mem(rel2real(*gpg))
 	}
-	timeboot := time.Now()
+	boot := time.Now()
 
 	staticDir := staticFinder()
 	templatesDir := templateFinder()
 
-	return timeboot, cwd, staticDir, templatesDir
+	return boot, cwd, staticDir, templatesDir
 
 }
 
@@ -137,47 +139,8 @@ func getKey() string {
 func getDestination() string {
 	return destinationEmail
 }
-func newfortune() string {
-	if len(fortunes) == 0 {
-		return ""
-	}
-	n := rand.Intn(len(fortunes))
-	log.Println("Fortune #", n)
-	return fortunes[n]
-}
 
-var fortunes = map[int]string{}
-
-func fortuneInit() {
-	file, err := os.Open("fortunes.txt")
-	if err != nil {
-		log.Println("New feature: fortunes. Looks for fortunes.txt. Format double line separated. available as a template variable {{.Fortune}}")
-		return
-	}
-	b := make([]byte, 1024*1000)
-	n, err := file.Read(b)
-	str := string(b[:n])
-	scanner := bufio.NewScanner(strings.NewReader(str))
-	var i = 1
-	var buf string
-	for scanner.Scan() {
-		if scanner.Text() == "" {
-			if buf != "" {
-
-				fortunes[i] = buf
-				i++
-			}
-			buf = ""
-			continue
-		}
-		buf = buf + scanner.Text() + "\n"
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "reading standard input:", err)
-	}
-
-	log.Println(len(fortunes), "Fortunes")
-}
+// Open file into bytes
 func read2mem(abspath string) []byte {
 	file, err := os.Open(abspath) // For read access.
 	if err != nil {
@@ -193,6 +156,8 @@ func read2mem(abspath string) []byte {
 	return data[:i]
 
 }
+
+// Relative path to real path
 func rel2real(file string) (realpath string) {
 	pathdir, _ := path.Split(file)
 	if pathdir == "" {
@@ -205,26 +170,28 @@ func rel2real(file string) (realpath string) {
 
 // getDomain returns the domain name (without port) of a request.
 func getDomain(r *http.Request) string {
-	type Domains map[string]http.Handler
 	hostparts := strings.Split(r.Host, ":")
 	requesthost := hostparts[0]
 	return requesthost
 }
 
-// getSubdomain returns the subdomain (if any)
 func getSubdomain(r *http.Request) string {
-	type Subdomains map[string]http.Handler
 	hostparts := strings.Split(r.Host, ":")
-	requesthost := hostparts[0]
-	if net.ParseIP(requesthost) == nil {
-		//log.Println("Info: " + requesthost)
-		domainParts := strings.Split(requesthost, ".")
-		if len(domainParts) > 2 {
-			if domainParts[0] != "127" {
-				return domainParts[0]
-			}
-		}
+	dots := strings.Count(hostparts[0], ".")
+	if dots < 2 {
+		return "" // is a top level domain name
 	}
+
+	if net.ParseIP(hostparts[0]) != nil {
+		return "" // is an IP address
+	}
+
+	domainParts := strings.Split(hostparts[0], ".")
+
+	if len(domainParts) > 2 {
+		return strings.Join(domainParts[0:len(domainParts)-2], ".")
+	}
+
 	return ""
 }
 
@@ -260,43 +227,78 @@ func timesince(anything interface{}) string {
 	since := time.Since(t)
 	const year = 365 * time.Hour * 24
 
+	// Years ago
+	if t.Year() != time.Now().Year() {
+		str := strconv.Itoa(time.Now().Year() - t.Year())
+		if str == "1" {
+			return str + " year ago"
+		}
+		return str + " years ago"
+
+	}
+
+	return humanize(since)
+
+}
+func humanize(since time.Duration) string {
+
 	// Minutes ago
 	if since < time.Hour*1 {
-		return strconv.FormatFloat(since.Minutes(), 'f', 0, 64) + " minutes ago"
+		str := strconv.FormatFloat(since.Minutes(), 'f', 0, 64)
+		if str == "1" {
+			return str + " minute ago"
+		}
+		return str + " minutes ago"
 	}
 	// Hours ago
 	if since < time.Hour*24 {
-		return strconv.FormatFloat(since.Hours(), 'f', 0, 64) + " hours ago"
+		str := strconv.FormatFloat(since.Hours(), 'f', 0, 64)
+		if str == "1" {
+			return str + " hour ago"
+		}
+		return str + " hours ago"
 	}
 	// Days ago
 	if since < time.Hour*24*7 {
-		return strconv.FormatFloat(since.Hours()/24, 'f', 0, 64) + " days ago"
+		str := strconv.FormatFloat(since.Hours()/24, 'f', 0, 64)
+		if str == "1" {
+			return "yesterday"
+		}
+		return str + " days ago"
 	}
 
 	// Weeks ago
 	if since < time.Hour*24*7*4 {
-		return strconv.FormatFloat(since.Hours()/(24*7), 'f', 0, 64) + " weeks ago"
+		str := strconv.FormatFloat(since.Hours()/(24*7), 'f', 0, 64)
+		if str == "1" {
+			return str + " week ago"
+		}
+		return str + " weeks ago"
 	}
+
 	// Months ago
-
 	if since < time.Hour*24*7*4*12 {
-		return strconv.FormatFloat(since.Hours()/(24*7*4), 'f', 0, 64) + " months ago"
-	}
-	// Years ago
-	if t.Year() != time.Now().Year() {
-		return strconv.Itoa(time.Now().Year()-t.Year()) + " years ago"
+		str := strconv.FormatFloat(since.Hours()/(24*7*4), 'f', 0, 64)
+		if str == "1" {
+			return str + " month ago"
+		}
+		return str + " months ago"
 	}
 
-	if time.Hour*24 < since && since < time.Hour*48 {
-		return "Yesterday"
+	const year = time.Hour * 24 * 365
+	if since < year {
+		str := strconv.FormatFloat(since.Hours()/(24*7*4), 'f', 0, 64)
+		if str == "1" {
+			return str + " month ago"
+		}
+		return str + " months ago"
 	}
 
 	//
 	floaty := (since.Hours()) / 24
 
 	ago := strconv.FormatFloat(floaty, 'f', 0, 64) + " days ago!"
-	//ago := strconv.FormatFloat(floaty, 'E', -1, 32) + " days ago!"
-	fmt.Println(ago)
+
 	return ago
 
 }
@@ -323,4 +325,50 @@ func verifyCaptcha(r *http.Request) bool {
 	}
 
 	return true
+}
+func newfortune() string {
+	if len(fortunes) == 0 {
+		return ""
+	}
+	n := rand.Intn(len(fortunes))
+	log.Println("Fortune #", n)
+	return fortunes[n]
+}
+
+// Fortunes!
+var fortunes = map[int]string{}
+
+func fortuneInit() {
+	file, err := os.Open("fortunes.txt")
+	if err != nil {
+		log.Println("No 'fortunes.txt' file.")
+		return
+	}
+	b := make([]byte, 1024*1000)
+	n, err := file.Read(b)
+	if err != nil {
+		log.Println("Fortunes:", err)
+		return
+	}
+	str := string(b[:n])
+	scanner := bufio.NewScanner(strings.NewReader(str))
+	var i = 1
+	var buf string
+	for scanner.Scan() {
+		if scanner.Text() == "" {
+			if buf != "" {
+
+				fortunes[i] = buf
+				i++
+			}
+			buf = ""
+			continue
+		}
+		buf = buf + scanner.Text() + "\n"
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "reading standard input:", err)
+	}
+
+	log.Println(len(fortunes), "Fortunes")
 }

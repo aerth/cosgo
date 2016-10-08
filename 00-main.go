@@ -41,6 +41,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -48,13 +49,14 @@ import (
 	"time"
 
 	"github.com/aerth/mbox"
+	"github.com/aerth/seconf"
 
 	"github.com/gorilla/csrf"
 	sl "github.com/hydrogen18/stoppableListener"
 )
 
 var (
-	version          = "0.9.G" // Use makefile for version hash
+	version          = "0.9.1" // Use makefile for version hash
 	destinationEmail = "cosgo@localhost"
 	antiCSRFkey      = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	cosgoRefresh     = 42 * time.Minute
@@ -67,19 +69,63 @@ var (
 	publicKey        []byte
 	cosgo            = new(Cosgo)
 	// flags
-	port        = flag.String("port", "8080", "Server: `port` to listen on\n\t")
-	bind        = flag.String("bind", "0.0.0.0", "Server: `interface` to bind to\n\t")
-	debug       = flag.Bool("debug", false, "Logging: More verbose.\n")
-	quiet       = flag.Bool("quiet", false, "Logging: Less output. See -nolog\n")
-	nolog       = flag.Bool("nolog", false, "Logging: Logs to /dev/null")
-	logfile     = flag.String("log", "", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
-	gpg         = flag.String("gpg", "", "GPG: Path to ascii-armored `public-key` to encrypt mbox\n)")
-	sendgridKey = flag.String("sg", "", "Sendgrid: Sendgrid API `key` (disables mbox)\n")
-	dest        = flag.String("to", "", "Email: Your email `address` (-sg flag required)\n")
-	mboxfile    = flag.String("mbox", "cosgo.mbox", "Email: Custom mbox file `name`\n\tExample: cosgo -mbox custom.mbox\n\t")
+	port           = flag.String("port", "8080", "Server: `port` to listen on\n\t")
+	bind           = flag.String("bind", "0.0.0.0", "Server: `interface` to bind to\n\t")
+	debug          = flag.Bool("debug", false, "Logging: More verbose.\n")
+	sitename       = flag.String("title", "Contact Form", "Config: Site name. Available as a template variable.\n")
+	configcreate   = flag.Bool("new", false, "Config: Create.\n")
+	configlocation = flag.String("config", ".cosgorc", "Config: Location.\n")
+	quiet          = flag.Bool("quiet", false, "Logging: Less output. See -nolog\n")
+	nolog          = flag.Bool("nolog", false, "Logging: Logs to /dev/null")
+	logfile        = flag.String("log", "", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
+	gpg            = flag.String("gpg", "", "GPG: Path to ascii-armored `public-key` to encrypt mbox\n)")
+	sendgridKey    = flag.String("sg", "", "Sendgrid: Sendgrid API `key` (disables mbox)\n")
+	dest           = flag.String("to", "", "Email: Your email `address` (-sg flag required)\n")
+	mboxfile       = flag.String("mbox", "cosgo.mbox", "Email: Custom mbox file `name`\n\tExample: cosgo -mbox custom.mbox\n\t")
 )
 
 func setup() {
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+	//var config seconf.Seconf
+
+	if seconf.Exists(*configlocation) {
+		config, err := seconf.ReadJSON(*configlocation)
+		if err != nil {
+			log.Println(err)
+			log.Fatalf("Bad config. Please remove the %q file and try again.", *configlocation)
+			os.Exit(1)
+		}
+		if config.Fields["bind"] == nil || config.Fields["gpg"] == nil || config.Fields["port"] == nil || config.Fields["name"] == nil || config.Fields["cookie-key"] == nil {
+			log.Fatalf("Bad config. Please remove the %q file and try again.", *configlocation)
+		}
+		if config.Fields["bind"] != nil {
+			*bind = config.Fields["bind"].(string)
+		}
+		if config.Fields["name"] != nil {
+			*sitename = config.Fields["name"].(string)
+		}
+		if config.Fields["port"] != nil {
+			*port = config.Fields["port"].(string)
+		}
+		if config.Fields["gpg"] != nil {
+			*gpg = config.Fields["gpg"].(string)
+		}
+		if config.Fields["cookie-key"] != nil {
+			antiCSRFkey = []byte(config.Fields["cookie-key"].(string))
+		}
+	} else if *configcreate {
+		fmt.Println("Welcome to Cosgo!")
+		seconf.LockJSON(*configlocation, "", map[string]string{
+			"bind":       "Bind to what address? \n0.0.0.0 for all, 127.0.0.1 for local/tor only",
+			"port":       "Which port to listen on?",
+			"cookie-key": "32/64 bit cookie key. Will not echo.",
+			"name":       "What is your site called?",
+			"gpg":        "Location of GPG public key. Enter \"none\" to disable",
+		})
+		os.Exit(0)
+	}
 	if !*quiet {
 		fmt.Println(logo)
 		fmt.Printf("\n\tcosgo v" + version + "\n")
@@ -162,8 +208,8 @@ func main() {
 		log.Println(stoperr)
 		os.Exit(1)
 	}
-	if *debug && !*quiet {
-		log.Printf("Info: Got listener %s %s", listener.Addr().String(), listener.Addr().Network())
+	if !*quiet {
+		log.Printf("Got listener %s", listener.Addr().String())
 	}
 
 	// Start Serving Loop
@@ -189,7 +235,7 @@ func main() {
 		select {
 		default:
 			if !*quiet {
-				log.Printf("Uptime: %s", time.Since(timeboot))
+				log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
 				log.Printf("Hits: %s", strconv.Itoa(hitcounter))
 			}
 			time.Sleep(time.Minute * 30)
@@ -222,16 +268,19 @@ func init() {
 	go func() {
 		select {
 		case signal := <-interrupt:
-			fmt.Println("Got signal:", signal)
-			fmt.Println("Dying")
+			log.Println("")
+			log.Println("Boot time:", humanize(time.Since(timeboot)))
+			log.Printf("Got signal: %s, Goodbye!", signal)
 			os.Exit(0)
 		case signal := <-reload:
-			fmt.Println("Got signal:", signal)
-			fmt.Println("Dying")
+			log.Println("")
+			log.Println("Boot time:", humanize(time.Since(timeboot)))
+			log.Printf("Got signal: %s, Goodbye!", signal) // Can reload program?
 			os.Exit(0)
 		case signal := <-stop:
-			fmt.Printf("Got signal:%v\n", signal)
-			fmt.Println("Dying")
+			log.Println("")
+			log.Println("Boot time:", humanize(time.Since(timeboot)))
+			log.Printf("Got signal: %s, Goodbye!", signal)
 			os.Exit(0)
 		}
 	}()

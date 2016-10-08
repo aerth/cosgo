@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"strconv"
 	"strings"
@@ -97,34 +98,11 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// customErrorHandler allows cosgo administrator to customize the 404 Error page
-// Using the ./templates/error.html file.
-func customErrorHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("visitor: 404 %s - %s at %s", r.Host, r.UserAgent(), r.RemoteAddr)
-	p := bluemonday.UGCPolicy()
-	domain := getDomain(r)
-	cleanURL := p.Sanitize(r.URL.Path[1:])
-	log.Printf("404 on %s/%s", cleanURL, domain)
-	t, err := template.New("Error").ParseFiles(templateDir + "error.html")
-	if err == nil {
-		data := map[string]interface{}{
-			"err":            "404",
-			"Key":            getKey(),
-			csrf.TemplateTag: csrf.TemplateField(r),
-		}
-		t.ExecuteTemplate(w, "Error", data)
-		return
-	}
-	log.Printf("template error: %q at %s", r.UserAgent(), r.RemoteAddr)
-	log.Println(err)
-	http.Redirect(w, r, "/", 301)
-}
-
 // redirecthomeHandler redirects everyone home ("/") with a 301 redirect.
 func redirecthomeHandler(rw http.ResponseWriter, r *http.Request) {
-	p := bluemonday.UGCPolicy()
 	domain := getDomain(r)
-	cleanURL := p.Sanitize(r.URL.Path[1:])
+	p := bluemonday.UGCPolicy()
+	cleanURL := p.Sanitize(r.URL.Path)
 	log.Printf("%q from %s hit %q on domain: %q", r.UserAgent(), r.RemoteAddr, cleanURL, domain)
 	http.Redirect(rw, r, "/", 301)
 

@@ -2,7 +2,7 @@
 # Copyright (c)2016 aerth <aerth@riseup.net>
 # https://github.com/aerth
 NAME=cosgo
-VERSION=0.9
+VERSION=0.9.1
 COMMIT=$(shell git rev-parse --verify --short HEAD)
 RELEASE:=${VERSION}.X${COMMIT}
 
@@ -70,3 +70,6 @@ package:
 
 clean:
 	rm -Rf bin pkg templates static cosgo.mbox cosgo.log HASH HASH.old
+
+deps:
+	go get -v -d .

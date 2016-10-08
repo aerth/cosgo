@@ -58,7 +58,7 @@ We expect to be supplied with well-formatted HTML (closing elements for every ap
 
 ### Supported Go Versions
 
-bluemonday is regularly tested against Go 1.1, 1.2, 1.3, 1.4, 1.5 and tip.
+bluemonday is regularly tested against Go 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7 and tip.
 
 We do not support Go 1.0 as we depend on `golang.org/x/net/html` which includes a reference to `io.ErrNoProgress` which did not exist in Go 1.0.
 
@@ -256,6 +256,15 @@ That helper will enable GIF, JPEG, PNG and WEBP images.
 
 It should be noted that there is a potential [security](http://palizine.plynt.com/issues/2010Oct/bypass-xss-filters/) [risk](https://capec.mitre.org/data/definitions/244.html) with the use of data URI links. You should only enable data URI links if you already trust the content.
 
+We also have some features to help deal with user generated content:
+```go
+p.AddTargetBlankToFullyQualifiedLinks(true)
+```
+
+This will ensure that anchor `<a href="" />` links that are fully qualified (the href destination includes a host name) will get `target="_blank"` added to them.
+
+Additionally any link that has `target="_blank"` after the policy has been applied will also have the `rel` attribute adjusted to add `noopener`. This means a link may start like `<a href="//host/path"/>` and will end up as `<a href="//host/path" rel="noopener" target="_blank">`. It is important to note that the addition of `noopener` is a security feature and not an issue. There is an unfortunate feature to browsers that a browser window opened as a result of `target="_blank"` can still control the opener (your web page) and this protects against that. The background to this can be found here: [https://dev.to/ben/the-targetblank-vulnerability-by-example](https://dev.to/ben/the-targetblank-vulnerability-by-example)
+
 ### Policy Building Helpers
 
 We also bundle some helpers to simplify policy building:
@@ -303,7 +312,6 @@ It is not the job of bluemonday to fix your bad HTML, it is merely the job of bl
 
 ## TODO
 
-* Add support for allowing the list of HTML elements that are permitted without attributes to be configured
 * Add support for CSS sanitisation to allow some CSS properties based on a whitelist, possibly using the [Gorilla CSS3 scanner](http://www.gorillatoolkit.org/pkg/css/scanner)
 * Investigate whether devs want to blacklist elements and attributes. This would allow devs to take an existing policy (such as the `bluemonday.UGCPolicy()` ) that encapsulates 90% of what they're looking for but does more than they need, and to remove the extra things they do not want to make it 100% what they want
 * Investigate whether devs want a validating HTML mode, in which the HTML elements are not just transformed into a balanced tree (every start tag has a closing tag at the correct depth) but also that elements and character data appear only in their allowed context (i.e. that a `table` element isn't a descendent of a `caption`, that `colgroup`, `thead`, `tbody`, `tfoot` and `tr` are permitted, and that character data is not permitted)

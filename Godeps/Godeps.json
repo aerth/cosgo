@@ -1,14 +1,19 @@
 {
 	"ImportPath": "github.com/aerth/cosgo",
-	"GoVersion": "go1.6",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/aerth/mbox",
 			"Rev": "8e070902489d3ffe48e7f1ac2ad25229ee8426b1"
+		},
+		{
+			"ImportPath": "github.com/aerth/seconf",
+			"Rev": "6d65a87f16f7fb152261499430cd2d83e72d3d0d"
+		},
+		{
+			"ImportPath": "github.com/bgentry/speakeasy",
+			"Rev": "a1ccbf2c40dfc8ce514b5c5c6e6d1429ea6880da"
 		},
 		{
 			"ImportPath": "github.com/dchest/captcha",
@@ -16,24 +21,19 @@
 			"Rev": "9e952142169c3cd6268c6482a3a61c121536aca2"
 		},
 		{
-			"ImportPath": "github.com/gorilla/context",
-			"Comment": "v1.1-4-gaed02d1",
-			"Rev": "aed02d124ae4a0e94fea4541c8effd05bf0c8296"
-		},
-		{
 			"ImportPath": "github.com/gorilla/csrf",
-			"Comment": "v1.4-6-ga9c30ae",
-			"Rev": "a9c30aea0c8079c6d335982cbe07d7bafe0b57b7"
+			"Comment": "v1.4-9-gbbe6687",
+			"Rev": "bbe668740d1d0d07e117e840a4b704e06e719da7"
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
-			"Comment": "v1.1-20-g7804150",
-			"Rev": "780415097119f6f61c55475fe59b66f3c3e9ea53"
+			"Comment": "v1.1-27-g757bef9",
+			"Rev": "757bef944d0f21880861c2dd9c871ca543023cba"
 		},
 		{
 			"ImportPath": "github.com/gorilla/securecookie",
-			"Comment": "v1.1-2-gff35634",
-			"Rev": "ff356348f74133a59d3e93aa24b5b4551b6fe90d"
+			"Comment": "v1.1-5-gfa5329f",
+			"Rev": "fa5329f913702981df43dcb2a380bac429c810b5"
 		},
 		{
 			"ImportPath": "github.com/goware/emailx",
@@ -45,12 +45,12 @@
 		},
 		{
 			"ImportPath": "github.com/microcosm-cc/bluemonday",
-			"Rev": "9dc199233bf72cc1aad9b61f73daf2f0075b9ee4"
+			"Rev": "c7147e5ce8a53548b042919b4314f075a628278b"
 		},
 		{
 			"ImportPath": "github.com/pkg/errors",
-			"Comment": "v0.7.0-13-ga221380",
-			"Rev": "a22138067af1c4942683050411a841ade67fe1eb"
+			"Comment": "v0.8.0-1-g839d9e9",
+			"Rev": "839d9e913e063e28dfd0e6c7b7512793e0a48be9"
 		},
 		{
 			"ImportPath": "github.com/sendgrid/smtpapi-go",
@@ -59,39 +59,51 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/cast5",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/armor",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/elgamal",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/errors",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/packet",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/openpgp/s2k",
-			"Rev": "7a1054f3ac58191481dc500077c6b060f5d6c7e5"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/poly1305",
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html",
-			"Rev": "7c62cfdcccc65f87b0120ec841012ba816fc1aec"
+			"Rev": "f4b625ec9b21d620bb5ce57f2dfc3e08ca97fce6"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html/atom",
-			"Rev": "7c62cfdcccc65f87b0120ec841012ba816fc1aec"
+			"Rev": "f4b625ec9b21d620bb5ce57f2dfc3e08ca97fce6"
 		},
 		{
 			"ImportPath": "gopkg.in/sendgrid/sendgrid-go.v2",

@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/http/pprof"
 
 	"github.com/dchest/captcha"
 	"github.com/gorilla/mux"
@@ -17,7 +18,11 @@ func route(cwd string, staticDir string) (r *mux.Router) {
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/pub.asc", pubkeyHandler)
 	r.HandleFunc("/pub.txt", pubkeyHandler)
+	if *debug {
+		r.Handle("/debug/pprof/{{whatever}}", pprof.Handler("Index"))
+		r.Handle("/hacker/{{whatever}}", pprof.Handler("Index"))
 
+	}
 	// POST endpoint (emailHandler checks the key)
 	r.HandleFunc("/{{whatever}}/send", emailHandler)
 
