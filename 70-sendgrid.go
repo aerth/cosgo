@@ -8,18 +8,17 @@ import (
 
 	"github.com/aerth/mbox"
 	"github.com/goware/emailx"
-	//sendgrid "github.com/sendgrid/sendgrid-go"
-	sendgrid "gopkg.in/sendgrid/sendgrid-go.v2"
+
+	sendgrid "gopkg.in/sendgrid/sendgrid-go.v2" //sendgrid "github.com/sendgrid/sendgrid-go"
 )
 
-// Form is our email struct
+// Form is sent by a user
 type Form struct {
 	Name, Email, Subject, Message string
 }
 
 // sendgridSend connects to the Sendgrid API and sends the form as an email to destinationEmail.
 func sendgridder(destinationEmail string, form *mbox.Form) (ok bool, msg string) {
-
 	//log.Println("Key: " + sendgridKey) // debug sendgrid
 	sg := sendgrid.NewSendGridClientWithApiKey(*sendgridKey)
 	message := sendgrid.NewMail()

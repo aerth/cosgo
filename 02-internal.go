@@ -238,6 +238,8 @@ func timesince(anything interface{}) string {
 	return humanize(since)
 
 }
+
+// Humanize a duration of time
 func humanize(since time.Duration) string {
 
 	// Minutes ago
@@ -295,7 +297,7 @@ func humanize(since time.Duration) string {
 	//
 	floaty := (since.Hours()) / 24
 
-	ago := strconv.FormatFloat(floaty, 'f', 0, 64) + " days ago!"
+	ago := strconv.FormatFloat(floaty, 'f', 0, 64) + " days ago"
 
 	return ago
 

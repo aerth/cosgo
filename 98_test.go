@@ -14,26 +14,28 @@ func init() {
 	times = randomDuration()
 }
 func randomDuration() (times []time.Duration) {
-	t := uint64(rand.Uint32()*4) * uint64(rand.Uint32()) * uint64(rand.Uint32()*rand.Uint32()) / 100000
+	t := uint64(rand.Uint32()*4) * uint64(rand.Uint32()) * uint64(rand.Uint32()*rand.Uint32()) / uint64(rand.Intn(10000)+1)
 	times = append(times, time.Duration(t))
 	return times
 }
-func TestOne(t *testing.T) {
-	fmt.Println("hello")
-	// Output: ohno
-}
 
 func BenchmarkHumanize(b *testing.B) {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1000; i++ {
 		rands := randomDuration()
 		for _, t := range rands {
-			fmt.Println(humanize(t))
-			// Output: unknown
+			b.StartTimer()
+			humanize(t)
+			b.StopTimer()
 		}
 	}
 }
 
 func TestHumanize(t *testing.T) {
-	fmt.Println(humanize(time.Hour * 24 * 7 * 30))
-	// Output: 8 months ag
+	s := humanize(time.Hour * 24 * 7 * 30)
+	fmt.Println("Got:", s)
+	fmt.Println("Wanted:", "8 months ago")
+	if s != "8 months ago" {
+		t.Fail()
+	}
+	// Output: 8 months ago
 }

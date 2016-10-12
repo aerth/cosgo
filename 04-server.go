@@ -48,6 +48,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			status = "Thanks! Your message was sent."
 		}
 	}
+
+	// Send an error message without using session
 	if query.Get("r") != "" {
 		if query["status"][0] == "0" {
 			switch query["r"][0] {
@@ -81,15 +83,15 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "We are experiencing some technical difficulties. Please come back soon!")
 	} else {
 		data := map[string]interface{}{
-			"Now":            nowtime,
-			"Status":         status,
-			"Version":        version,
-			"Hits":           hitcounter,
-			"Uptime":         uptime,
-			"Boottime":       timeboot,
-			"Fortune":        fortune,
-			"PublicKey":      string(publicKey),
-			"Key":            getKey(),
+			"Now":            nowtime,           // Now
+			"Status":         status,            // notify of form success or fail
+			"Version":        version,           // Cosgo version
+			"Hits":           hitcounter,        // Visitor hits
+			"Uptime":         uptime,            // Uptime
+			"Boottime":       timeboot,          // Boot time
+			"Fortune":        fortune,           // random fortune from fortunes.txt
+			"PublicKey":      string(publicKey), // GPG key
+			"Key":            getKey(),          // POST URL key
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
 		}

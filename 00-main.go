@@ -90,8 +90,7 @@ func setup() {
 	if !flag.Parsed() {
 		flag.Parse()
 	}
-	//var config seconf.Seconf
-
+	// Seconf encoded configuration file (recommended)
 	if seconf.Exists(*configlocation) {
 		config, errar := seconf.ReadJSON(*configlocation)
 		if errar != nil {
@@ -135,8 +134,6 @@ func setup() {
 	}
 	_, cwd, staticDir, templateDir = initialize()
 
-	//	http.Handle("/", r)
-
 	if *debug && !*quiet {
 		log.Println("booted:", timeboot)
 		log.Println("working dir:", cwd)
@@ -157,12 +154,12 @@ func setup() {
 			if *debug && !*quiet {
 				log.Printf("Info: URL Key is " + cosgo.URLKey + "\n")
 			}
-			// every X minutes
+			// every X minutes change the URL key (default 42 minutes)
 			time.Sleep(cosgoRefresh)
 		}
 	}()
 
-	// Disable mbox if using sendgrid
+	// Disable mbox completely if using sendgrid
 	if *sendgridKey != "" {
 		*mboxfile = os.DevNull
 	}
@@ -190,7 +187,8 @@ func setup() {
 	if *logfile != "" {
 		openLogFile()
 	}
-	go fortuneInit()
+
+	go fortuneInit() // Spin fortunes
 
 }
 
@@ -221,6 +219,7 @@ func main() {
 			log.Fatalln(err)
 		}
 
+		// Here we either use fastcgi or normal http
 		if !*fastcgi {
 			go func() {
 				if listener != nil {
@@ -247,9 +246,7 @@ func main() {
 				} else {
 					log.Fatalln("nil listener")
 				}
-
 			}()
-
 		}
 
 		// End the for-loop with a timer/hit counter every 30 minutes.
