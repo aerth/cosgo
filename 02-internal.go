@@ -24,9 +24,9 @@ func openLogFile() {
 	if *logfile == "" {
 		return
 	}
-	f, err := os.OpenFile(*logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	if err != nil {
-		log.Printf("error opening file: %v", err)
+	f, ferr := os.OpenFile(*logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if ferr != nil {
+		log.Printf("error opening file: %v", ferr)
 		log.Fatal("Hint: touch " + *logfile + ", or chown/chmod it so that the cosgo process can access it.")
 		os.Exit(1)
 	}
@@ -87,7 +87,6 @@ func templateFinder() string {
 	}
 
 	if strings.Contains(err.Error(), "no such file") {
-		log.Println("No such file...", err.Error())
 		log.Println("Creating!")
 		err = RestoreAssets(".", "templates")
 		if err != nil {
@@ -99,14 +98,13 @@ func templateFinder() string {
 			return templateDir
 		}
 
-	}
-
-	if strings.Contains(err.Error(), "not defined") {
+	} else if strings.Contains(err.Error(), "not defined") {
 		log.Println("Template is bad.", err.Error())
 		os.Exit(1)
 	}
 
-	return "./templates/"
+	log.Fatalln(err)
+	return ""
 }
 
 // staticFinder returns the static directory. If none is found, static files are disabled.
@@ -142,15 +140,15 @@ func getDestination() string {
 
 // Open file into bytes
 func read2mem(abspath string) []byte {
-	file, err := os.Open(abspath) // For read access.
-	if err != nil {
-		log.Fatal(err)
+	file, ferr := os.Open(abspath) // For read access.
+	if ferr != nil {
+		log.Fatal(ferr)
 	}
 
 	data := make([]byte, 4096)
-	i, err := file.Read(data)
-	if err != nil {
-		log.Fatal(err)
+	i, rerr := file.Read(data)
+	if rerr != nil {
+		log.Fatal(rerr)
 	}
 
 	return data[:i]

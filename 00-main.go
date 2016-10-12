@@ -37,8 +37,6 @@ https://github.com/aerth/cosgo
 import (
 	"flag"
 	"fmt"
-	"github.com/aerth/mbox"
-	"github.com/aerth/seconf"
 	"log"
 	"math/rand"
 	"net"
@@ -51,12 +49,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aerth/mbox"
+	"github.com/aerth/seconf"
+
 	"github.com/gorilla/csrf"
 	sl "github.com/hydrogen18/stoppableListener"
 )
 
 var (
-	version          = "0.9.1" // Use makefile for version hash
+	version          = "0.9.2" // Use Makefile for precise version
 	destinationEmail = "cosgo@localhost"
 	antiCSRFkey      = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
 	cosgoRefresh     = 42 * time.Minute
@@ -92,9 +93,9 @@ func setup() {
 	//var config seconf.Seconf
 
 	if seconf.Exists(*configlocation) {
-		config, err := seconf.ReadJSON(*configlocation)
-		if err != nil {
-			log.Println(err)
+		config, errar := seconf.ReadJSON(*configlocation)
+		if errar != nil {
+			log.Println(errar)
 			log.Fatalf("Bad config. Please remove the %q file and try again.", *configlocation)
 			os.Exit(1)
 		}
@@ -167,9 +168,9 @@ func setup() {
 	}
 
 	// Open mbox or dev/null
-	f, err := os.OpenFile(*mboxfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	if err != nil {
-		log.Printf("error opening file: %v", err)
+	f, ferr := os.OpenFile(*mboxfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if ferr != nil {
+		log.Printf("error opening file: %v", ferr)
 		log.Fatal("Hint: touch ./cosgo.mbox, or chown/chmod it so that the cosgo process can access it.")
 		os.Exit(1)
 	}

@@ -9,7 +9,10 @@ const (
 	CaptchaVariation = 2
 	// CollectNum triggers a garbage collection routine after X captchas are created.
 	CollectNum = 100
+	// Expiration for captchas
 	Expiration = 10 * time.Minute
-	StdWidth   = 240
-	StdHeight  = 90
+	// StdWidth for captcha
+	StdWidth = 240
+	// StdHeight for captcha
+	StdHeight = 90
 )
