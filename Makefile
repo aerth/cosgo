@@ -8,7 +8,7 @@ RELEASE:=${VERSION}.X${COMMIT}
 
 
 # Build a static linked binary
-export CGO_ENABLED=0
+export CGO_ENABLED?=0
 
 # Embed commit version into binary
 GO_LDFLAGS=-ldflags "-X main.version=$(RELEASE)"
@@ -29,7 +29,7 @@ build:
 	go fmt
 	mkdir -p bin
 	go build -v ${GO_LDFLAGS} -o bin/${NAME}-v${RELEASE}
-	@echo Built ${NAME}-${RELEASE}
+	@echo Built bin/${NAME}-${RELEASE}
 
 install:
 	@echo installing to ${PREFIX}

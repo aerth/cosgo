@@ -23,18 +23,19 @@ var funcMap = template.FuncMap{
 	"timesince": timesince,
 }
 
-func pubkeyHandler(w http.ResponseWriter, r *http.Request) {
-	if publicKey == nil {
+func (c *Cosgo) pubkeyHandler(w http.ResponseWriter, r *http.Request) {
+	if c.publicKey == nil {
 		redirecthomeHandler(w, r)
 		return
 	}
-	w.Write(publicKey)
+	w.Write(c.publicKey)
 }
-func homeHandler(w http.ResponseWriter, r *http.Request) {
+
+func (c *Cosgo) homeHandler(w http.ResponseWriter, r *http.Request) {
 	hitcounter = hitcounter + 1
-	cosgo.Visitors = hitcounter
+	c.Visitors = hitcounter
 	if !*quiet {
-		log.Printf("Visitor #%v: %s %s %s %s", cosgo.Visitors, r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
+		log.Printf("Visitor #%v: %s %s %s %s", c.Visitors, r.UserAgent(), r.RemoteAddr, r.Host, r.RequestURI)
 	}
 
 	query, err := url.ParseQuery(r.URL.RawQuery)
@@ -75,7 +76,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	nowtime := thyme.Format("Mon Jan 2 15:04:05 2006")
 	uptime := time.Since(timeboot).String()
 	fortune := newfortune()
-	t, templateerr := template.New("Index").Funcs(funcMap).ParseFiles(templateDir + "index.html")
+	t, templateerr := template.New("Index").Funcs(funcMap).ParseFiles(c.templatesDir + "index.html")
 	if templateerr != nil {
 		// Something happened to the template since booting successfully. Must be 100% correct HTML syntax.
 		log.Println("Almost fatal")
@@ -83,15 +84,16 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "We are experiencing some technical difficulties. Please come back soon!")
 	} else {
 		data := map[string]interface{}{
-			"Now":            nowtime,           // Now
-			"Status":         status,            // notify of form success or fail
-			"Version":        version,           // Cosgo version
-			"Hits":           hitcounter,        // Visitor hits
-			"Uptime":         uptime,            // Uptime
-			"Boottime":       timeboot,          // Boot time
-			"Fortune":        fortune,           // random fortune from fortunes.txt
-			"PublicKey":      string(publicKey), // GPG key
-			"Key":            getKey(),          // POST URL key
+			"Now":            nowtime,             // Now
+			"Status":         status,              // notify of form success or fail
+			"Version":        version,             // Cosgo version
+			"Hits":           hitcounter,          // Visitor hits
+			"Uptime":         uptime,              // Uptime
+			"Boottime":       timeboot,            // Boot time
+			"Fortune":        fortune,             // random fortune from fortunes.txt
+			"Title":          c.Name,              // Site Name from config
+			"PublicKey":      string(c.publicKey), // GPG key
+			"Key":            c.getKey(),          // POST URL key
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
 		}
@@ -125,14 +127,14 @@ func srvError(r *http.Request, rw http.ResponseWriter, e int) {
 }
 
 // emailHandler checks the Captcha string, and the POST key, and sends on its way.
-func emailHandler(rw http.ResponseWriter, r *http.Request) {
+func (c *Cosgo) emailHandler(rw http.ResponseWriter, r *http.Request) {
 	if !verifyMethod(r) {
 		log.Println("bad method")
 		srvError(r, rw, 1)
 		return
 	}
 
-	if !verifyKey(r) {
+	if !c.verifyKey(r) {
 		srvError(r, rw, 2)
 		return
 	}
@@ -143,13 +145,13 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if *debug {
-		log.Printf("Human Visitor: %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Printf("Human Visitor: %s at %s %q", r.UserAgent(), r.RemoteAddr, r.URL.Path)
 	}
 
 	r.ParseForm()
 
 	// normalize and validate email, message
-	mailform := mbox.ParseFormGPG(destinationEmail, r.Form, publicKey)
+	mailform := mbox.ParseFormGPG(c.Destination, r.Form, c.publicKey)
 
 	// quick offline email address validation
 	if mailform.Email == "@" || mailform.Email == " " || !strings.ContainsAny(mailform.Email, "@") || !strings.ContainsAny(mailform.Email, ".") {
@@ -157,8 +159,9 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sendgrid?
 	if *sendgridKey != "" {
-		ok, str := sendgridder(destinationEmail, mailform)
+		ok, str := c.sendgridder(mailform)
 		if str != "" {
 			log.Println(str)
 		}
@@ -169,8 +172,10 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		srvSuccess(r, rw, 1)
+		inboxcount++
 		return
 	}
+
 	// save the message
 	saving := mbox.Save(mailform)
 	if saving != nil {
@@ -179,6 +184,7 @@ func emailHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
+	inboxcount++
 	srvSuccess(r, rw, 1)
 }
 
@@ -192,4 +198,7 @@ func serveSingle(pattern string, filename string) {
 		log.Printf("Serving %s: %s at %s", pattern, r.UserAgent(), r.RemoteAddr)
 		http.ServeContent(w, r, filename, time.Now(), nil)
 	})
+}
+func csrfErrorHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Please clear your cache, or delete any old cookies. We have updated our CSRF token."))
 }

@@ -53,22 +53,15 @@ import (
 	"github.com/aerth/seconf"
 
 	"github.com/gorilla/csrf"
-	sl "github.com/hydrogen18/stoppableListener"
 )
 
 var (
-	version          = "0.9.2" // Use Makefile for precise version
-	destinationEmail = "cosgo@localhost"
-	antiCSRFkey      = []byte("LI80PNK1xcT01jmQBsEyxyrNCrbyyFPjPU8CKnxwmCruxNijgnyb3hXXD3p1RBc0+LIRQUUbTtis6hc6LD4I/A==")
-	cosgoRefresh     = 42 * time.Minute
-	err              error
-	hitcounter       int
-	timeboot         = time.Now()
-	templateDir      = "./templates/"
-	staticDir        = "./static/"
-	cwd              string
-	publicKey        []byte
-	cosgo            = new(Cosgo)
+	version    = "0.9.3" // Use Makefile for precise version
+	err        error
+	hitcounter int
+	inboxcount int
+	timeboot   = time.Now()
+	cwd        = os.Getenv("PWD")
 	// flags
 	port           = flag.String("port", "8080", "Server: `port` to listen on\n\t")
 	bind           = flag.String("bind", "0.0.0.0", "Server: `interface` to bind to\n\t")
@@ -86,10 +79,13 @@ var (
 	mboxfile       = flag.String("mbox", "cosgo.mbox", "Email: Custom mbox file `name`\n\tExample: cosgo -mbox custom.mbox\n\t")
 )
 
-func setup() {
+func setup() *Cosgo {
 	if !flag.Parsed() {
 		flag.Parse()
 	}
+	cosgo := new(Cosgo)
+	cosgo.Refresh = (time.Minute * 42)
+	cosgo.boot = time.Now()
 	// Seconf encoded configuration file (recommended)
 	if seconf.Exists(*configlocation) {
 		config, errar := seconf.ReadJSON(*configlocation)
@@ -114,33 +110,34 @@ func setup() {
 			*gpg = config.Fields["gpg"].(string)
 		}
 		if config.Fields["cookie-key"] != nil {
-			antiCSRFkey = []byte(config.Fields["cookie-key"].(string))
+			cosgo.antiCSRFkey = []byte(config.Fields["cookie-key"].(string))
 		}
-	} else if *configcreate {
+
+	} else if *configcreate { // Config does not exist, user is asking to make one.
 		fmt.Println("Welcome to Cosgo!")
 		seconf.LockJSON(*configlocation, "", map[string]string{
-			"bind":       "Bind to what address? \n0.0.0.0 for all, 127.0.0.1 for local/tor only",
-			"port":       "Which port to listen on?",
-			"cookie-key": "32/64 bit cookie key. Will not echo.",
-			"name":       "What is your site called?",
-			"gpg":        "Location of GPG public key. Enter \"none\" to disable",
+			"bind":        "Bind to what address? \n0.0.0.0 for all, 127.0.0.1 for local/tor only",
+			"port":        "Which port to listen on?",
+			"cookie-code": "32/64 bit cookie key. Good to make this random. Important not to change across reboots.",
+			"name":        "What is your site called? Available as a template variable",
+			"gpg":         "Location of GPG public key. Enter \"none\" to disable",
 		})
 		os.Exit(0)
 	}
+
+	// Version information
 	if !*quiet {
 		fmt.Println(logo)
 		fmt.Printf("\n\tcosgo v" + version + "\n")
 		fmt.Printf("\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n")
 	}
-	_, cwd, staticDir, templateDir = initialize()
+	cosgo.initialize()
 
-	if *debug && !*quiet {
-		log.Println("booted:", timeboot)
-		log.Println("working dir:", cwd)
-		log.Println("css/js/img dir:", staticDir)
-		log.Println("cosgo templates dir:", templateDir)
-		log.Printf("binding to: %s:%s", *bind, *port)
-	}
+	log.Println("booted:", timeboot)
+	log.Println("working dir:", cwd)
+	log.Println("css/js/img dir:", cosgo.staticDir)
+	log.Println("cosgo templates dir:", cosgo.templatesDir)
+	log.Printf("binding to: %s:%s", *bind, *port)
 
 	// Fire up the cosgo engine
 	go func() {
@@ -155,7 +152,7 @@ func setup() {
 				log.Printf("Info: URL Key is " + cosgo.URLKey + "\n")
 			}
 			// every X minutes change the URL key (default 42 minutes)
-			time.Sleep(cosgoRefresh)
+			time.Sleep(cosgo.Refresh)
 		}
 	}()
 
@@ -174,9 +171,9 @@ func setup() {
 
 	// Set destination email for mbox and sendgrid
 	if *dest != "" {
-		destinationEmail = *dest
+		cosgo.Destination = *dest
 	}
-	mbox.Destination = destinationEmail
+	mbox.Destination = cosgo.Destination
 	mbox.Mail = log.New(f, "", 0)
 
 	// Is nolog enabled?
@@ -190,45 +187,66 @@ func setup() {
 
 	go fortuneInit() // Spin fortunes
 
+	return cosgo
 }
 
 func main() {
-	setup()
-	r := route(cwd, staticDir)
+	cosgo := setup()
+	r := cosgo.route(cwd)
 	// Try to bind
-	oglistener, binderr := net.Listen("tcp", *bind+":"+*port)
+	listener, binderr := net.Listen("tcp", *bind+":"+*port)
 	if binderr != nil {
 		log.Println(binderr)
 		os.Exit(1)
 	}
 
-	// Bind successful. Creating a stoppable listener.
-	listener, stoperr := sl.New(oglistener)
-	if stoperr != nil {
-		log.Println(stoperr)
-		os.Exit(1)
-	}
-	if !*quiet {
-		log.Printf("Got listener %s", listener.Addr().String())
+	// final check
+	if cosgo.antiCSRFkey == nil {
+		log.Println("Generating antiCSRFkey based on \"today\"")
+		/*
+			CSRF key although important, doesn't need to change often.
+			This method changes at most once a day, and makes sure each cosgo instance's key is unique.
+		*/
+		today := strconv.Itoa(int(time.Now().Truncate(24 * time.Hour).Unix()))
+		here, _ := os.Getwd()
+
+		// Add working directory
+		if len(here) < 23 { // short cwd
+			today += here + here
+		} else { // long cwd
+			today += here[len(here)-23 : len(here)-1]
+		}
+		// Increase length
+		for {
+			if len([]byte(today)) < 64 { // short cwd, add today
+				today += strconv.Itoa(int(time.Now().Truncate(24 * time.Hour).Unix()))
+			} else {
+				break
+			}
+		}
+		// 64 bit
+		sixtyfour := []byte(today[0:64])
+		log.Println("CSRF:", string(sixtyfour))
+		// Example:  CSRF: 1476230400/tmp/tstcosgo/tmp/tstcosgo1476230400147623040014762304
+		// Or: 			 CSRF: 1476230400hub.com/aerth/cosgo/bi14762304001476230400147623040014
+		// In /home: CSRF: 1476230400/home/ftp/home/ftp147623040014762304001476230400147623
+		// All are 64 in length, reasonably secure, and unique. And none will change before tomorrow.
+		cosgo.antiCSRFkey = sixtyfour
 	}
 
 	// Start Serving Loop
 	for {
-		listener, err = sl.New(oglistener)
-		if err != nil {
-			log.Fatalln(err)
-		}
 
 		// Here we either use fastcgi or normal http
 		if !*fastcgi {
 			go func() {
 				if listener != nil {
 					go http.Serve(listener,
-						csrf.Protect(antiCSRFkey,
+						csrf.Protect(cosgo.antiCSRFkey,
 							csrf.HttpOnly(true),
 							csrf.FieldName("cosgo"),
 							csrf.CookieName("cosgo"),
-							csrf.Secure(false))(r))
+							csrf.Secure(false), csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)))(r))
 				} else {
 					log.Fatalln("nil listener")
 				}
@@ -238,11 +256,11 @@ func main() {
 			go func() {
 				if listener != nil {
 					go fcgi.Serve(listener,
-						csrf.Protect(antiCSRFkey,
+						csrf.Protect(cosgo.antiCSRFkey,
 							csrf.HttpOnly(true),
 							csrf.FieldName("cosgo"),
 							csrf.CookieName("cosgo"),
-							csrf.Secure(false))(r))
+							csrf.Secure(false), csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)))(r))
 				} else {
 					log.Fatalln("nil listener")
 				}
@@ -252,9 +270,11 @@ func main() {
 		// End the for-loop with a timer/hit counter every 30 minutes.
 		select {
 		default:
+
 			if !*quiet {
 				log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
-				log.Printf("Hits: %s", strconv.Itoa(hitcounter))
+				log.Printf("Hits: %v", hitcounter)
+				log.Printf("Messages: %v", inboxcount)
 			}
 			time.Sleep(time.Minute * 30)
 		}
@@ -271,6 +291,13 @@ var logo = `
                |___/
 `
 
+func die(signal os.Signal) {
+	fmt.Println()
+	log.Printf("Got %s signal, Goodbye!", signal)
+	log.Println("Boot time:", humanize(time.Since(timeboot)))
+	log.Println("Messages saved:", inboxcount)
+	log.Println("Hits:", hitcounter)
+}
 func init() {
 
 	// Key Generator
@@ -283,22 +310,17 @@ func init() {
 	signal.Notify(interrupt, os.Interrupt)
 	signal.Notify(stop, syscall.SIGINT)
 	signal.Notify(reload, syscall.SIGHUP)
+
 	go func() {
 		select {
 		case signal := <-interrupt:
-			log.Println("")
-			log.Println("Boot time:", humanize(time.Since(timeboot)))
-			log.Printf("Got signal: %s, Goodbye!", signal)
+			die(signal)
 			os.Exit(0)
 		case signal := <-reload:
-			log.Println("")
-			log.Println("Boot time:", humanize(time.Since(timeboot)))
-			log.Printf("Got signal: %s, Goodbye!", signal) // Can reload program?
+			die(signal)
 			os.Exit(0)
 		case signal := <-stop:
-			log.Println("")
-			log.Println("Boot time:", humanize(time.Since(timeboot)))
-			log.Printf("Got signal: %s, Goodbye!", signal)
+			die(signal)
 			os.Exit(0)
 		}
 	}()

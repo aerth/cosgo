@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"html/template"
 	"log"
 	"math/rand"
@@ -33,7 +32,7 @@ func openLogFile() {
 	log.SetOutput(f)
 }
 
-func initialize() (time.Time, string, string, string) {
+func (c *Cosgo) initialize() error {
 
 	// Load environmental variables as flags
 	if os.Getenv("COSGO_PORT") != "" {
@@ -45,9 +44,9 @@ func initialize() (time.Time, string, string, string) {
 	}
 
 	if os.Getenv("COSGO_REFRESH") != "" {
-		cosgoRefresh, err = time.ParseDuration(os.Getenv("COSGO_REFRESH"))
+		c.Refresh, err = time.ParseDuration(os.Getenv("COSGO_REFRESH"))
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
 	}
 
@@ -60,39 +59,40 @@ func initialize() (time.Time, string, string, string) {
 	if os.Getenv("COSGO_GPG") != "" {
 		*gpg = os.Getenv("COSGO_GPG")
 	}
+
+	// GPG is a flag, but can be overrided by ENV
 	if *gpg != "" {
 		if !*quiet {
 			log.Println("[+gpg]")
 		}
-		publicKey = read2mem(rel2real(*gpg))
+		c.publicKey = read2mem(rel2real(*gpg))
 	}
-	boot := time.Now()
+	c.boot = time.Now()
+	c.staticDir = staticFinder()
+	c.templatesDir = templateFinder()
 
-	staticDir := staticFinder()
-	templatesDir := templateFinder()
-
-	return boot, cwd, staticDir, templatesDir
-
+	return nil
 }
 
-// templateFinder returns the template directory we will use, if one isn't found, the error is fatal.
+// templateFinder returns a directory string where template "index.html" is located.
+// We also parse the template to test whether or not we should boot any further.
 func templateFinder() string {
-
-	if *debug && !*quiet {
-		log.Printf("Trying template directory %q", templateDir)
-	}
+	templateDir := "./templates/"
+	// Try to parse
 	_, err = template.New("Index").Funcs(funcMap).ParseFiles(templateDir + "index.html")
 	if err == nil {
 		return templateDir
 	}
 
+	// Does not exist
 	if strings.Contains(err.Error(), "no such file") {
-		log.Println("Creating!")
+		log.Println("Creating ./templates")
 		err = RestoreAssets(".", "templates")
 		if err != nil {
 			log.Fatalln(err)
 		}
 
+		// Try to parse
 		_, err = template.New("Index").Funcs(funcMap).ParseFiles(templateDir + "index.html")
 		if err == nil {
 			return templateDir
@@ -103,39 +103,40 @@ func templateFinder() string {
 		os.Exit(1)
 	}
 
-	log.Fatalln(err)
+	// The error is probably permissions and theres nothing more to be done
+	log.Fatalln("Template:", err)
 	return ""
 }
 
-// staticFinder returns the static directory. If none is found, static files are disabled.
+// staticFinder returns the directory path where static files will be served from.
+// If it doesn't exist, it is created at ./static
 func staticFinder() string {
 	staticDir := "./static/"
 	_, err = os.Open(staticDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			staticDir = "/usr/local/share/cosgo/static/"
-			_, err = os.Open(staticDir)
-			if err != nil {
-				if os.IsNotExist(err) {
-					if *debug {
-						log.Printf("No staticDir. Creating one.")
-					}
-					RestoreAssets(".", "static")
-					staticDir = "./static/"
-					return staticDir
-				}
-			}
-		}
+	if err == nil {
+		return staticDir
 	}
 
+	// try global
+	staticDir = "/usr/local/share/cosgo/static/"
+	_, err = os.Open(staticDir)
+	if err == nil {
+		return staticDir
+	}
+
+	// create
+	log.Printf("Creating ./static")
+	RestoreAssets(".", "static")
+	staticDir = "./static/"
 	return staticDir
+
 }
 
-func getKey() string {
-	return cosgo.URLKey
+func (c *Cosgo) getKey() string {
+	return c.URLKey
 }
-func getDestination() string {
-	return destinationEmail
+func (c *Cosgo) getDestination() string {
+	return c.Destination
 }
 
 // Open file into bytes
@@ -302,16 +303,16 @@ func humanize(since time.Duration) string {
 	return ago
 
 }
-func verifyKey(r *http.Request) bool {
+func (c *Cosgo) verifyKey(r *http.Request) bool {
 
 	// userkey is the user submitted URL key
 	userkey := strings.TrimLeft(r.URL.Path, "/")
 	userkey = strings.TrimRight(userkey, "/send")
 	// Check URL Key
 	if *debug {
-		log.Printf("\nComparing... \n\t" + userkey + "\n\t" + cosgo.URLKey)
+		log.Printf("\nComparing... \n\t" + userkey + "\n\t" + c.URLKey)
 	}
-	if userkey != cosgo.URLKey {
+	if userkey != c.URLKey {
 		log.Println("Key Mismatch. ", r.UserAgent(), r.RemoteAddr, r.RequestURI+"\n")
 		return false
 	}
@@ -364,10 +365,10 @@ func fortuneInit() {
 			buf = ""
 			continue
 		}
-		buf = buf + scanner.Text() + "\n"
+		buf += scanner.Text() + "\n"
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "reading standard input:", err)
+		log.Fatalln("Can't read fortunes.txt somewhere near line #", i)
 	}
 
 	log.Println(len(fortunes), "Fortunes")

@@ -17,25 +17,25 @@ type Form struct {
 	Name, Email, Subject, Message string
 }
 
-// sendgridSend connects to the Sendgrid API and sends the form as an email to destinationEmail.
-func sendgridder(destinationEmail string, form *mbox.Form) (ok bool, msg string) {
+// sendgridSend connects to the Sendgrid API and sends the form as an email to cosgo.Destination.
+func (c *Cosgo) sendgridder(form *mbox.Form) (ok bool, msg string) {
 	//log.Println("Key: " + sendgridKey) // debug sendgrid
 	sg := sendgrid.NewSendGridClientWithApiKey(*sendgridKey)
 	message := sendgrid.NewMail()
-	message.AddTo(destinationEmail)
+	message.AddTo(c.Destination)
 	message.SetFrom(form.Email)
 	message.SetFromName(form.Name)
 	message.SetSubject(form.Subject)
 	message.SetText(form.Message)
 	r := sg.Send(message)
 	if r == nil {
-		return true, string("Sendgrid: Email sent to " + destinationEmail)
+		return true, string("Sendgrid: Email sent to " + c.Destination)
 	}
 	return false, string("Sendgrid Error:" + r.Error())
 }
 
 // sendgridSender
-func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
+func (c *Cosgo) sendgridSender(rw http.ResponseWriter, r *http.Request, destination string, query url.Values) error {
 	form := mbox.ParseQuery(query)
 	//Validate user submitted email address
 	err := emailx.Validate(form.Email)
@@ -56,7 +56,7 @@ func sendgridSender(rw http.ResponseWriter, r *http.Request, destination string,
 	}
 
 	// Looks good! Lets send it to sendgrid!
-	ok, msg := sendgridder(destination, form)
+	ok, msg := c.sendgridder(form)
 
 	// Is good send!
 	if ok == true {
