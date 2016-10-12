@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	_ "net/http/pprof"
 	"net/url"
 	"strconv"
 	"strings"
@@ -161,7 +160,7 @@ func (c *Cosgo) emailHandler(rw http.ResponseWriter, r *http.Request) {
 
 	// Sendgrid?
 	if *sendgridKey != "" {
-		ok, str := c.sendgridder(mailform)
+		str, ok := c.sendgridder(mailform)
 		if str != "" {
 			log.Println(str)
 		}

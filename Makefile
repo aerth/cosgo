@@ -1,17 +1,18 @@
-# cosco 
+# cosco
 # Copyright (c)2016 aerth <aerth@riseup.net>
 # https://github.com/aerth
 NAME=cosgo
 VERSION=0.9.1
 COMMIT=$(shell git rev-parse --verify --short HEAD)
 RELEASE:=${VERSION}.X${COMMIT}
-
+DEBUG=${VERSION}${COMMIT}DEBUG
 
 # Build a static linked binary
 export CGO_ENABLED?=0
 
 # Embed commit version into binary
-GO_LDFLAGS=-ldflags "-X main.version=$(RELEASE)"
+GO_LDFLAGS=-ldflags "-s -X main.version=${RELEASE}"
+DEBUGLDFLAGS=-ldflags "-X main.version=${DEBUG}"
 
 # Install to /usr/local/
 #PREFIX=/usr/local
@@ -22,9 +23,31 @@ ifeq (,${GOPATH})
 export GOPATH=/tmp/gopath
 endif
 
-all: build 
+all: build
+help:
+		@echo 'Welcome and thanks for building COSGO!'
+		@echo 'Here are some examples:'
+		@echo
+		@echo 'Normal build and install to /usr/local/bin, static linked with no debug symbols'
+		@echo '		make'
+		@echo '		sudo make install'
+		@echo
+		@echo 'Debug build with extra verbose logs and /debug/pprof URLs'
+		@echo '		make debug'
+		@echo
+		@echo 'Custom install path'
+		@echo '		PREFIX=$$HOME/bin make install'
+		@echo
+		@echo 'Generate 10 fortunes, append to fortunes.txt. These are available as a template variable.'
+		@echo '		make fortune'
 
-build:
+
+debug:
+	set -e
+	go fmt
+	mkdir -p bin
+	CGO_ENABLED=1	go build -v -x -tags debug ${DEBUGLDFLAGS} -o bin/${NAME}-v${DEBUG}
+build: fortune
 	set -e
 	go fmt
 	mkdir -p bin
@@ -38,7 +61,7 @@ install:
 	chmod 755 ${PREFIX}/bin/${NAME}
 
 run:
-	bin/${NAME}-v${RELEASE} 
+	bin/${NAME}-v${RELEASE}
 
 cross:
 	mkdir -p bin
@@ -68,8 +91,28 @@ cross:
 package:
 	@echo "Run ./pack.bash"
 
+# clean all remainders of testing
 clean:
-	rm -Rf bin pkg templates static cosgo.mbox cosgo.log HASH HASH.old
+	rm -Rf bin pkg templates static cosgo.mbox cosgo.log HASH HASH.old debug.log
 
+# download the dependencies
 deps:
-	go get -v -d .
+	go get -u -v -d .
+
+# fortune activates random fortunes available as a template variable.
+fortune:
+	@set -e
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
+	@echo '10 Fortunes added'

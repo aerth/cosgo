@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/dchest/captcha"
+	"github.com/gorilla/mux"
 )
 
 //openLogFile switches the log engine to a file, rather than stdout.
@@ -36,15 +37,15 @@ func (c *Cosgo) initialize() error {
 
 	// Load environmental variables as flags
 	if os.Getenv("COSGO_PORT") != "" {
-		*port = os.Getenv("COSGO_PORT")
+		c.Port = os.Getenv("COSGO_PORT")
 	}
 
 	if os.Getenv("COSGO_BIND") != "" {
-		*bind = os.Getenv("COSGO_BIND")
+		c.Bind = os.Getenv("COSGO_BIND")
 	}
 
 	if os.Getenv("COSGO_REFRESH") != "" {
-		c.Refresh, err = time.ParseDuration(os.Getenv("COSGO_REFRESH"))
+		*refreshTime, err = time.ParseDuration(os.Getenv("COSGO_REFRESH"))
 		if err != nil {
 			return err
 		}
@@ -70,6 +71,7 @@ func (c *Cosgo) initialize() error {
 	c.boot = time.Now()
 	c.staticDir = staticFinder()
 	c.templatesDir = templateFinder()
+	c.r = mux.NewRouter()
 
 	return nil
 }
@@ -146,7 +148,7 @@ func read2mem(abspath string) []byte {
 		log.Fatal(ferr)
 	}
 
-	data := make([]byte, 4096)
+	var data []byte
 	i, rerr := file.Read(data)
 	if rerr != nil {
 		log.Fatal(rerr)
@@ -319,14 +321,17 @@ func (c *Cosgo) verifyKey(r *http.Request) bool {
 	return true
 }
 
-func verifyCaptcha(r *http.Request) bool {
+// verifyCaptcha is a variable func for testing
+var verifyCaptcha = func(r *http.Request) bool {
 	if !captcha.VerifyString(r.FormValue("captchaId"), r.FormValue("captchaSolution")) {
 		log.Printf("User Error: CAPTCHA %s at %s", r.UserAgent(), r.RemoteAddr)
+		log.Println(r.FormValue("captchaId"))
+		log.Println(r.FormValue("captchaSolution"))
 		return false
 	}
-
 	return true
 }
+
 func newfortune() string {
 	if len(fortunes) == 0 {
 		return ""
@@ -342,10 +347,12 @@ var fortunes = map[int]string{}
 func fortuneInit() {
 	file, err := os.Open("fortunes.txt")
 	if err != nil {
-		log.Println("No 'fortunes.txt' file.")
+		if !*quiet {
+			log.Println("No 'fortunes.txt' file.")
+		}
 		return
 	}
-	b := make([]byte, 1024*1000)
+	var b []byte
 	n, err := file.Read(b)
 	if err != nil {
 		log.Println("Fortunes:", err)
@@ -370,6 +377,7 @@ func fortuneInit() {
 	if err := scanner.Err(); err != nil {
 		log.Fatalln("Can't read fortunes.txt somewhere near line #", i)
 	}
-
-	log.Println(len(fortunes), "Fortunes")
+	if !*quiet {
+		log.Println(len(fortunes), "Fortunes")
+	}
 }

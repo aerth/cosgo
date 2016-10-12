@@ -1,4 +1,4 @@
-// cosgo is an easy to use contact form *server*.
+// cosgo is an easy to use contact form *server*
 package main
 
 /*
@@ -28,7 +28,8 @@ https://github.com/aerth/cosgo
 // copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -63,7 +64,7 @@ var (
 	timeboot   = time.Now()
 	cwd        = os.Getenv("PWD")
 	// flags
-	port           = flag.String("port", "8080", "Server: `port` to listen on\n\t")
+	portnum        = flag.Int("port", 8080, "Server: `port` to listen on\n\t")
 	bind           = flag.String("bind", "0.0.0.0", "Server: `interface` to bind to\n\t")
 	debug          = flag.Bool("debug", false, "Logging: More verbose.\n")
 	sitename       = flag.String("title", "Contact Form", "Config: Site name. Available as a template variable.\n")
@@ -72,11 +73,14 @@ var (
 	quiet          = flag.Bool("quiet", false, "Logging: Less output. See -nolog\n")
 	nolog          = flag.Bool("nolog", false, "Logging: Logs to /dev/null")
 	fastcgi        = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
+	secure         = flag.Bool("secure", false, "HTTPS only.")
 	logfile        = flag.String("log", "", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
+	cookie         = flag.String("cookie", "cosgo", "Custom cookie+form field name\n")
 	gpg            = flag.String("gpg", "", "GPG: Path to ascii-armored `public-key` to encrypt mbox\n)")
 	sendgridKey    = flag.String("sg", "", "Sendgrid: Sendgrid API `key` (disables mbox)\n")
 	dest           = flag.String("to", "", "Email: Your email `address` (-sg flag required)\n")
 	mboxfile       = flag.String("mbox", "cosgo.mbox", "Email: Custom mbox file `name`\n\tExample: cosgo -mbox custom.mbox\n\t")
+	refreshTime    = flag.Duration("refresh", time.Hour, "How often to change the POST URL Key")
 )
 
 func setup() *Cosgo {
@@ -84,8 +88,10 @@ func setup() *Cosgo {
 		flag.Parse()
 	}
 	cosgo := new(Cosgo)
-	cosgo.Refresh = (time.Minute * 42)
+	cosgo.r = nil
+
 	cosgo.boot = time.Now()
+
 	// Seconf encoded configuration file (recommended)
 	if seconf.Exists(*configlocation) {
 		config, errar := seconf.ReadJSON(*configlocation)
@@ -94,24 +100,16 @@ func setup() *Cosgo {
 			log.Fatalf("Bad config. Please remove the %q file and try again.", *configlocation)
 			os.Exit(1)
 		}
+
 		if config.Fields["bind"] == nil || config.Fields["gpg"] == nil || config.Fields["port"] == nil || config.Fields["name"] == nil || config.Fields["cookie-key"] == nil {
 			log.Fatalf("Bad config. Please remove the %q file and try again.", *configlocation)
 		}
-		if config.Fields["bind"] != nil {
-			*bind = config.Fields["bind"].(string)
-		}
-		if config.Fields["name"] != nil {
-			*sitename = config.Fields["name"].(string)
-		}
-		if config.Fields["port"] != nil {
-			*port = config.Fields["port"].(string)
-		}
-		if config.Fields["gpg"] != nil {
-			*gpg = config.Fields["gpg"].(string)
-		}
-		if config.Fields["cookie-key"] != nil {
-			cosgo.antiCSRFkey = []byte(config.Fields["cookie-key"].(string))
-		}
+
+		cosgo.Bind = config.Fields["bind"].(string)
+		*sitename = config.Fields["name"].(string)
+		cosgo.Port = config.Fields["port"].(string)
+		*gpg = config.Fields["gpg"].(string)
+		cosgo.antiCSRFkey = []byte(config.Fields["cookie-key"].(string))
 
 	} else if *configcreate { // Config does not exist, user is asking to make one.
 		fmt.Println("Welcome to Cosgo!")
@@ -123,6 +121,8 @@ func setup() *Cosgo {
 			"gpg":         "Location of GPG public key. Enter \"none\" to disable",
 		})
 		os.Exit(0)
+	} else {
+		// No configuration detected
 	}
 
 	// Version information
@@ -132,13 +132,12 @@ func setup() *Cosgo {
 		fmt.Printf("\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n")
 	}
 	cosgo.initialize()
-
-	log.Println("booted:", timeboot)
-	log.Println("working dir:", cwd)
-	log.Println("css/js/img dir:", cosgo.staticDir)
-	log.Println("cosgo templates dir:", cosgo.templatesDir)
-	log.Printf("binding to: %s:%s", *bind, *port)
-
+	if !*quiet {
+		log.Println("booted:", timeboot)
+		log.Println("working dir:", cwd)
+		log.Println("css/js/img dir:", cosgo.staticDir)
+		log.Println("cosgo templates dir:", cosgo.templatesDir)
+	}
 	// Fire up the cosgo engine
 	go func() {
 		for {
@@ -146,13 +145,14 @@ func setup() *Cosgo {
 				log.Println("Info: Generating Random 40 URL Key...")
 			}
 			// set a random URL key (40 char length).
-			// Future: Maybe use cookie to store the key, so each visitor gets a unique key.
 			cosgo.URLKey = generateURLKey(40)
 			if *debug && !*quiet {
 				log.Printf("Info: URL Key is " + cosgo.URLKey + "\n")
 			}
 			// every X minutes change the URL key (default 42 minutes)
-			time.Sleep(cosgo.Refresh)
+			//time.Sleep(*refreshTime)
+			// break test
+			time.Sleep(1 * time.Nanosecond)
 		}
 	}()
 
@@ -191,95 +191,81 @@ func setup() *Cosgo {
 }
 
 func main() {
+
+	// Create the server, load mbox and fortunes and run initialize
 	cosgo := setup()
-	r := cosgo.route(cwd)
+
+	// Set all the needed /url paths
+	e := cosgo.route(cwd)
+	if e != nil {
+		log.Fatalln(e)
+	}
+
+	// Needs to be compiled with build tag 'debug' to be redefined, and -debug CLI flag to be activated
+	if *debug {
+		cosgo.debug()
+	}
+	cosgo.Bind = *bind
+	cosgo.Port = strconv.Itoa(*portnum)
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		fmt.Println("Listening on", cosgo.Bind+":"+cosgo.Port)
+	}()
 	// Try to bind
-	listener, binderr := net.Listen("tcp", *bind+":"+*port)
+	listener, binderr := net.Listen("tcp", cosgo.Bind+":"+cosgo.Port)
 	if binderr != nil {
 		log.Println(binderr)
 		os.Exit(1)
 	}
 
-	// final check
 	if cosgo.antiCSRFkey == nil {
-		log.Println("Generating antiCSRFkey based on \"today\"")
-		/*
-			CSRF key although important, doesn't need to change often.
-			This method changes at most once a day, and makes sure each cosgo instance's key is unique.
-		*/
-		today := strconv.Itoa(int(time.Now().Truncate(24 * time.Hour).Unix()))
-		here, _ := os.Getwd()
+		cosgo.antiCSRFkey = anticsrfGen()
+	}
 
-		// Add working directory
-		if len(here) < 23 { // short cwd
-			today += here + here
-		} else { // long cwd
-			today += here[len(here)-23 : len(here)-1]
-		}
-		// Increase length
-		for {
-			if len([]byte(today)) < 64 { // short cwd, add today
-				today += strconv.Itoa(int(time.Now().Truncate(24 * time.Hour).Unix()))
+	// Start Serving
+	// Here we either use fastcgi or normal http server, using csrf and mux.
+	// with custom csrf error handler and 10 minute cookie.
+	if !*fastcgi {
+		go func() {
+			if listener != nil {
+				go http.Serve(listener,
+					csrf.Protect(cosgo.antiCSRFkey,
+						csrf.HttpOnly(true),
+						csrf.FieldName(*cookie),
+						csrf.CookieName(*cookie),
+						csrf.Secure(*secure), csrf.MaxAge(600), csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)))(cosgo.r))
 			} else {
-				break
+				log.Fatalln("nil listener")
 			}
-		}
-		// 64 bit
-		sixtyfour := []byte(today[0:64])
-		log.Println("CSRF:", string(sixtyfour))
-		// Example:  CSRF: 1476230400/tmp/tstcosgo/tmp/tstcosgo1476230400147623040014762304
-		// Or: 			 CSRF: 1476230400hub.com/aerth/cosgo/bi14762304001476230400147623040014
-		// In /home: CSRF: 1476230400/home/ftp/home/ftp147623040014762304001476230400147623
-		// All are 64 in length, reasonably secure, and unique. And none will change before tomorrow.
-		cosgo.antiCSRFkey = sixtyfour
+
+		}()
+	} else {
+		go func() {
+			if listener != nil {
+				go fcgi.Serve(listener,
+					csrf.Protect(cosgo.antiCSRFkey,
+						csrf.HttpOnly(true),
+						csrf.FieldName(*cookie),
+						csrf.CookieName(*cookie),
+						csrf.Secure(*secure), csrf.MaxAge(600), csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)))(cosgo.r))
+			} else {
+				log.Fatalln("nil listener")
+			}
+		}()
 	}
 
-	// Start Serving Loop
-	for {
+	// End with a timer/hit counter every 30 minutes.
+	select {
+	default:
 
-		// Here we either use fastcgi or normal http
-		if !*fastcgi {
-			go func() {
-				if listener != nil {
-					go http.Serve(listener,
-						csrf.Protect(cosgo.antiCSRFkey,
-							csrf.HttpOnly(true),
-							csrf.FieldName("cosgo"),
-							csrf.CookieName("cosgo"),
-							csrf.Secure(false), csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)))(r))
-				} else {
-					log.Fatalln("nil listener")
-				}
-
-			}()
-		} else {
-			go func() {
-				if listener != nil {
-					go fcgi.Serve(listener,
-						csrf.Protect(cosgo.antiCSRFkey,
-							csrf.HttpOnly(true),
-							csrf.FieldName("cosgo"),
-							csrf.CookieName("cosgo"),
-							csrf.Secure(false), csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)))(r))
-				} else {
-					log.Fatalln("nil listener")
-				}
-			}()
+		if !*quiet {
+			log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
+			log.Printf("Hits: %v", hitcounter)
+			log.Printf("Messages: %v", inboxcount)
 		}
-
-		// End the for-loop with a timer/hit counter every 30 minutes.
-		select {
-		default:
-
-			if !*quiet {
-				log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
-				log.Printf("Hits: %v", hitcounter)
-				log.Printf("Messages: %v", inboxcount)
-			}
-			time.Sleep(time.Minute * 30)
-		}
-
+		time.Sleep(time.Minute * 30)
 	}
+
 }
 
 var logo = `
@@ -291,39 +277,60 @@ var logo = `
                |___/
 `
 
-func die(signal os.Signal) {
-	fmt.Println()
-	log.Printf("Got %s signal, Goodbye!", signal)
-	log.Println("Boot time:", humanize(time.Since(timeboot)))
-	log.Println("Messages saved:", inboxcount)
-	log.Println("Hits:", hitcounter)
-}
 func init() {
-
 	// Key Generator
 	rand.Seed(time.Now().UnixNano())
 
 	// Hopefully a clean exit if we get a sig
 	interrupt := make(chan os.Signal, 1)
-	stop := make(chan os.Signal, 1)
-	reload := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-	signal.Notify(stop, syscall.SIGINT)
-	signal.Notify(reload, syscall.SIGHUP)
-
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL)
 	go func() {
 		select {
 		case signal := <-interrupt:
-			die(signal)
-			os.Exit(0)
-		case signal := <-reload:
-			die(signal)
-			os.Exit(0)
-		case signal := <-stop:
-			die(signal)
+			fmt.Println()
+			log.Printf("Got %s signal, Goodbye!", signal)
+			log.Println("Boot time:", humanize(time.Since(timeboot)))
+			log.Println("Messages saved:", inboxcount)
+			log.Println("Hits:", hitcounter)
 			os.Exit(0)
 		}
 	}()
 	flag.Parse()
+
+}
+
+func anticsrfGen() []byte {
+	log.Println("Generating antiCSRFkey based on \"today\"")
+	/*
+		CSRF key is important, but doesn't need to change often.
+		And I don't expect users to set their own.
+		This method changes at most once a day, and makes sure each cosgo instance's key is unique.
+	*/
+
+	today := strconv.Itoa(int(time.Now().Truncate(24 * time.Hour).Unix()))
+	here, _ := os.Getwd()
+
+	// Add working directory
+	if len(here) < 23 { // short cwd
+		today += here + here
+	} else { // long cwd
+		today += here[len(here)-23 : len(here)-1]
+	}
+	// Increase length
+	for {
+		if len([]byte(today)) < 64 { // short cwd, add today
+			today += strconv.Itoa(int(time.Now().Truncate(24 * time.Hour).Unix()))
+		} else {
+			break
+		}
+	}
+	sixtyfour := []byte(today[0:64])
+	log.Printf("CSRF: %q", string(sixtyfour))
+	return sixtyfour
+	// 64 bit
+	// Example:  CSRF: 1476230400/tmp/tstcosgo/tmp/tstcosgo1476230400147623040014762304
+	// Or: 			 CSRF: 1476230400hub.com/aerth/cosgo/bi14762304001476230400147623040014
+	// In /home: CSRF: 1476230400/home/ftp/home/ftp147623040014762304001476230400147623
+	// All are 64 in length, reasonably secure, and unique. And none will change before tomorrow.
 
 }
