@@ -15,8 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dchest/captcha"
 	clr "github.com/mewkiz/pkg/term"
 )
+
+var ()
 
 /*
 
@@ -29,7 +32,7 @@ So far, testing for a few things:
 	3. mbox gets bytes written to it on successful message send
 	4. Asset directories are restored (static, template) if they dont exist
 	5. Mbox is created on boot
-	6. CRONJOBs will not be broken. CLI Flags will not change for a while.
+	6. CRONJOBs will not be broken, CLI Flags and Usage will not change for a while.
 
 TODO:
 	1. Config tests
@@ -42,7 +45,7 @@ var times []time.Duration
 var redwanted = clr.Red("Wanted:")
 var rednotfound = ""
 
-// thanks strings
+// grep is helper function to display the relative (target) line from a source string.
 func grep(source interface{}, target string) string {
 	var str string
 	switch source.(type) {
@@ -67,26 +70,23 @@ func grep(source interface{}, target string) string {
 	return ""
 }
 
+// In the case of a failed test, backup the response to /tmp/c_test_ThisTest_X
 func backup(b []byte) {
 	tmpfile, _ := ioutil.TempFile(os.TempDir(), "c_test_"+strconv.Itoa(int(time.Now().Truncate(1*time.Minute).Unix())))
 	n, e := tmpfile.Write(b)
 	if e != nil {
 		panic(e)
 	}
-
-	go func() {
-
-		fmt.Println("\t" + clr.Green(strconv.Itoa(n)+" bytes saved to "+tmpfile.Name()))
-
-	}()
+	fmt.Println("\t" + clr.Green(strconv.Itoa(n)+" bytes saved to "+tmpfile.Name()))
 }
+
+var originalFlags []string
+
 func init() {
 	rand.NewSource(time.Now().UnixNano())
-
 	*quiet = true
-	*nolog = true
 	*mboxfile = "testing.mbox"
-
+	originalFlags = os.Args
 }
 func randomDuration() (times []time.Duration) {
 	t := uint64(rand.Uint32()*4) * uint64(rand.Uint32()) * uint64(rand.Uint32()*rand.Uint32()) / uint64(rand.Intn(10000)+1)
@@ -96,6 +96,7 @@ func randomDuration() (times []time.Duration) {
 
 func BenchmarkHumanize(b *testing.B) {
 	for i := 0; i < 1000; i++ {
+		b.StopTimer()
 		rands := randomDuration()
 		for _, t := range rands {
 			b.StartTimer()
@@ -149,7 +150,6 @@ func TestHomeHandler(t *testing.T) {
 
 // TestEmailHandler tests that the URLKey allows sending message (later we test the mbox)
 func TestEmailHandler(t *testing.T) {
-	flag.Parse()
 	verifyCaptcha = func(r *http.Request) bool { return true } // hack the captcha
 	//*logfile = os.DevNull
 
@@ -348,6 +348,7 @@ func TestAssets(t *testing.T) {
 	}
 	os.Chdir(tmpdir)
 	c2 := setup()
+	c2 = setup()
 	cwd, _ := os.Getwd()
 	c2.route(cwd)
 	files, e := ioutil.ReadDir(tmpdir)
@@ -376,18 +377,19 @@ func TestAssets(t *testing.T) {
 	}
 }
 
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
-}
+// func TestMain(m *testing.M) {
+// 	flag.Parse()
+// 	os.Exit(m.Run())
+// }
 
 // TestEmailHandlerTimeout tests what happens after a refresh
 func TestEmailHandlerTimeout(t *testing.T) {
 	verifyCaptcha = func(r *http.Request) bool { return true } // hack the captcha
 	//*logfile = os.DevNull
-	*refreshTime = 1 * time.Nanosecond // Really quick...
-	flag.Parse()
+	*refreshTime = 10 * time.Nanosecond // Really quick...
+	//flag.Parse()
 	c3 := setup() // Timer is started
+
 	cwd, _ := os.Getwd()
 	c3.route(cwd)
 	ts := httptest.NewServer(c3.r)
@@ -399,18 +401,19 @@ func TestEmailHandlerTimeout(t *testing.T) {
 	}
 	greeting, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
-	cut := strings.Split(string(greeting), `<p><img id="image" src="/captcha/`)
-	captcha := cut[1][:20]
+
 	v := &url.Values{}
 	v.Add("email", "joe@joe.com")
 	v.Add("subject", "hello world")
 	v.Add("message", "from test")
-	v.Add("cosgo", "123")
-	v.Add("captchaId", captcha)
+	fmt.Println("Fake:", captcha.New())
+	c3.rw.RLock()
 	oldkey := c3.URLKey
+	c3.rw.RUnlock()
 	var t2 time.Time
 	for {
-		time.Sleep(1 * time.Nanosecond)
+		time.Sleep(10 * time.Nanosecond)
+		// Wait for key to change
 		if oldkey != c3.URLKey {
 			t2 = time.Now()
 			break
@@ -447,9 +450,14 @@ func TestEmailHandlerTimeout(t *testing.T) {
 // Test that this line does not break:
 // 'cosgo -gpg /etc/aerth.asc -fastcgi -log cosgo.log -port 8089'
 // Lots of flags: bind config debug fastcgi gpg log mbox new nolog port quiet sg title to
-// No more breaking CRONTABS on cosgo upgrades!
+// No more breaking crontabs on cosgo upgrades!
 // These flag tests need to be at the bottom of the test suite
 func TestFlags(t *testing.T) {
+
+	// This causes some races so...
+	if !*debug {
+		return
+	}
 	const PanicOnError = true
 	devnull, _ := os.OpenFile(os.DevNull, os.O_WRONLY, 0700)
 	flag.CommandLine.SetOutput(devnull)
@@ -468,7 +476,9 @@ func TestFlags(t *testing.T) {
 	flag.Parse()
 	return
 }
+
 func TestBadFlags(t *testing.T) {
+
 	// Test that this line *does* break:
 	teststring := []string{"-bad"}
 	const ContinueOnError = true

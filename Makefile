@@ -2,10 +2,11 @@
 # Copyright (c)2016 aerth <aerth@riseup.net>
 # https://github.com/aerth
 NAME=cosgo
-VERSION=0.9.1
+VERSION=0.9.2
 COMMIT=$(shell git rev-parse --verify --short HEAD)
 RELEASE:=${VERSION}.X${COMMIT}
 DEBUG=${VERSION}${COMMIT}DEBUG
+GOFILES=${shell ls | grep '.go' | grep -v '_test'}
 
 # Build a static linked binary
 export CGO_ENABLED?=0
@@ -24,6 +25,9 @@ export GOPATH=/tmp/gopath
 endif
 
 all: build
+run: build
+	bin/${NAME}-v${RELEASE} -port 8088
+	
 help:
 		@echo 'Welcome and thanks for building COSGO!'
 		@echo 'Here are some examples:'
@@ -60,8 +64,7 @@ install:
 	mv -v ./bin/${NAME}-v${RELEASE} ${PREFIX}/bin/${NAME}
 	chmod 755 ${PREFIX}/bin/${NAME}
 
-run:
-	bin/${NAME}-v${RELEASE}
+#run:
 
 cross:
 	mkdir -p bin
@@ -116,3 +119,8 @@ fortune:
 	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
 	$(shell fortune >> fortunes.txt && echo "" >> fortunes.txt)
 	@echo '10 Fortunes added'
+
+test:
+	go test -v -x
+	echo ${GOFILES}
+	@CGO_ENABLED=1 go run -race ${GOFILES} -- -key testdata/key.pem -cert testdata/cert.pem -port 8089 -tlsport 8777

@@ -1,39 +1,29 @@
-// cosgo is an easy to use contact form *server*
-package main
-
 /*
-                           _
-  ___ ___  ___  __ _  ___ | |
- / __/ _ \/ __|/ _` |/ _ \| |
-| (_| (_) \__ \ (_| | (_) |_|
- \___\___/|___/\__, |\___/(_)
-               |___/
+The MIT License (MIT)
 
-https://github.com/aerth/cosgo
+Copyright (c) 2016 aerth
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
-// The MIT License (MIT)
-//
-// Copyright (c) 2016 aerth
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// cosgo is an easy to use contact form server for any purpose
+package main
 
 import (
 	"flag"
@@ -56,6 +46,21 @@ import (
 	"github.com/gorilla/csrf"
 )
 
+var logo = `
+                           _
+  ___ ___  ___  __ _  ___ | |
+ / __/ _ \/ __|/ _  |/ _ \| |
+| (_| (_) \__ \ (_| | (_) |_|
+ \___\___/|___/\__, |\___/(_)
+               |___/
+`
+
+/*
+
+https://github.com/aerth/cosgo
+
+*/
+
 var (
 	version    = "0.9.3" // Use Makefile for precise version
 	err        error
@@ -63,9 +68,10 @@ var (
 	inboxcount int
 	timeboot   = time.Now()
 	cwd        = os.Getenv("PWD")
-	// flags
+	// flags (all 20 of them)
 	portnum        = flag.Int("port", 8080, "Server: `port` to listen on\n\t")
 	bind           = flag.String("bind", "0.0.0.0", "Server: `interface` to bind to\n\t")
+	sslport        = flag.String("tls", "0.0.0.0:443", "Server: `interface:port` to bind (SSL/TLS)o\n\t")
 	debug          = flag.Bool("debug", false, "Logging: More verbose.\n")
 	sitename       = flag.String("title", "Contact Form", "Config: Site name. Available as a template variable.\n")
 	configcreate   = flag.Bool("new", false, "Config: Create.\n")
@@ -74,23 +80,32 @@ var (
 	nolog          = flag.Bool("nolog", false, "Logging: Logs to /dev/null")
 	fastcgi        = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
 	secure         = flag.Bool("secure", false, "HTTPS only.")
-	logfile        = flag.String("log", "", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
+	logfile        = flag.String("log", "stderr", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
 	cookie         = flag.String("cookie", "cosgo", "Custom cookie+form field name\n")
 	gpg            = flag.String("gpg", "", "GPG: Path to ascii-armored `public-key` to encrypt mbox\n)")
 	sendgridKey    = flag.String("sg", "", "Sendgrid: Sendgrid API `key` (disables mbox)\n")
 	dest           = flag.String("to", "", "Email: Your email `address` (-sg flag required)\n")
 	mboxfile       = flag.String("mbox", "cosgo.mbox", "Email: Custom mbox file `name`\n\tExample: cosgo -mbox custom.mbox\n\t")
 	refreshTime    = flag.Duration("refresh", time.Hour, "How often to change the POST URL Key")
+	path2key       = flag.String("key", "", "Path to SSL Key")
+	path2cert      = flag.String("cert", "", "Path to SSL Cert")
 )
 
 func setup() *Cosgo {
-	if !flag.Parsed() {
-		flag.Parse()
-	}
+	log.SetPrefix("cosgo>")
+
 	cosgo := new(Cosgo)
 	cosgo.r = nil
 
 	cosgo.boot = time.Now()
+	cosgo.rw.Lock()
+	t1 := time.Now()
+	kee := generateURLKey(40)
+	cosgo.URLKey = kee
+	if *debug && !*quiet {
+		log.Printf("Generated URL Key %q in %v", cosgo.URLKey, time.Now().Sub(t1))
+	}
+	cosgo.rw.Unlock()
 
 	// Seconf encoded configuration file (recommended)
 	if seconf.Exists(*configlocation) {
@@ -130,6 +145,7 @@ func setup() *Cosgo {
 		fmt.Println(logo)
 		fmt.Printf("\n\tcosgo v" + version + "\n")
 		fmt.Printf("\tCopyright 2016 aerth\n\tSource code at https://github.com/aerth/cosgo\n")
+		fmt.Println(os.Args)
 	}
 	cosgo.initialize()
 	if !*quiet {
@@ -138,23 +154,6 @@ func setup() *Cosgo {
 		log.Println("css/js/img dir:", cosgo.staticDir)
 		log.Println("cosgo templates dir:", cosgo.templatesDir)
 	}
-	// Fire up the cosgo engine
-	go func() {
-		for {
-			if *debug && !*quiet {
-				log.Println("Info: Generating Random 40 URL Key...")
-			}
-			// set a random URL key (40 char length).
-			cosgo.URLKey = generateURLKey(40)
-			if *debug && !*quiet {
-				log.Printf("Info: URL Key is " + cosgo.URLKey + "\n")
-			}
-			// every X minutes change the URL key (default 42 minutes)
-			//time.Sleep(*refreshTime)
-			// break test
-			time.Sleep(1 * time.Nanosecond)
-		}
-	}()
 
 	// Disable mbox completely if using sendgrid
 	if *sendgridKey != "" {
@@ -175,15 +174,6 @@ func setup() *Cosgo {
 	}
 	mbox.Destination = cosgo.Destination
 	mbox.Mail = log.New(f, "", 0)
-
-	// Is nolog enabled?
-	if *nolog {
-		*logfile = os.DevNull
-	}
-	// Switch to cosgo.log if not debug
-	if *logfile != "" {
-		openLogFile()
-	}
 
 	go fortuneInit() // Spin fortunes
 
@@ -207,9 +197,10 @@ func main() {
 	}
 	cosgo.Bind = *bind
 	cosgo.Port = strconv.Itoa(*portnum)
+	log.Println("Refreshing every", *refreshTime)
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		fmt.Println("Listening on", cosgo.Bind+":"+cosgo.Port)
+		log.Println("Listening on", cosgo.Bind+":"+cosgo.Port)
 	}()
 	// Try to bind
 	listener, binderr := net.Listen("tcp", cosgo.Bind+":"+cosgo.Port)
@@ -221,11 +212,22 @@ func main() {
 	if cosgo.antiCSRFkey == nil {
 		cosgo.antiCSRFkey = anticsrfGen()
 	}
+	if *path2cert != *path2key {
+		go cosgo.ServeSSL()
+	}
+
+	// Is nolog enabled?
+	if *nolog {
+		*logfile = os.DevNull
+	}
+	// stdout or a filename
+	openLogFile()
 
 	// Start Serving
 	// Here we either use fastcgi or normal http server, using csrf and mux.
 	// with custom csrf error handler and 10 minute cookie.
 	if !*fastcgi {
+
 		go func() {
 			if listener != nil {
 				go http.Serve(listener,
@@ -254,28 +256,42 @@ func main() {
 		}()
 	}
 
-	// End with a timer/hit counter every 30 minutes.
 	select {
-	default:
+
+	// Fire up the cosgo engine
+
+	case <-time.After(*refreshTime):
+		cosgo.rw.Lock()
+		if *debug && !*quiet {
+			log.Println("Info: Generating Random 40 URL Key...")
+		}
+		t1 := time.Now()
+		// set a random URL key (40 char length).
+		kee := generateURLKey(40)
+		cosgo.URLKey = kee
+		if *debug && !*quiet {
+			log.Printf("Generated URL Key %q in %v", cosgo.URLKey, time.Now().Sub(t1))
+		}
+		cosgo.rw.Unlock()
+
+		// every X minutes change the URL key (default 42 minutes)
+		// break tests uncomment next line
+		//*refreshTime = time.Nanosecond
 
 		if !*quiet {
 			log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
 			log.Printf("Hits: %v", hitcounter)
 			log.Printf("Messages: %v", inboxcount)
+			if *debug {
+				log.Printf("Port: %v", cosgo.Port)
+			}
+			if *path2cert != "" {
+				log.Println("TLS: ON")
+			}
 		}
-		time.Sleep(time.Minute * 30)
+
 	}
-
 }
-
-var logo = `
-                           _
-  ___ ___  ___  __ _  ___ | |
- / __/ _ \/ __|/ _  |/ _ \| |
-| (_| (_) \__ \ (_| | (_) |_|
- \___\___/|___/\__, |\___/(_)
-               |___/
-`
 
 func init() {
 	// Key Generator
@@ -332,5 +348,24 @@ func anticsrfGen() []byte {
 	// Or: 			 CSRF: 1476230400hub.com/aerth/cosgo/bi14762304001476230400147623040014
 	// In /home: CSRF: 1476230400/home/ftp/home/ftp147623040014762304001476230400147623
 	// All are 64 in length, reasonably secure, and unique. And none will change before tomorrow.
+
+}
+
+// ServeSSL serves cosgo on port 443 with attached key+cert
+func (c *Cosgo) ServeSSL() {
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		log.Println("Cosgo: Serving TLS on", *sslport)
+	}()
+
+	log.Fatalln(http.ListenAndServeTLS(*sslport, *path2cert, *path2key,
+		csrf.Protect(c.antiCSRFkey,
+			csrf.HttpOnly(true),
+			csrf.FieldName(*cookie),
+			csrf.CookieName(*cookie),
+			csrf.Secure(true),
+			csrf.MaxAge(600),
+			csrf.ErrorHandler(http.HandlerFunc(csrfErrorHandler)),
+		)(c.r)))
 
 }

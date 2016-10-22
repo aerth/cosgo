@@ -1,0 +1,127 @@
+{{define "Index"}}
+<!DOCTYPE html>
+<!--
+
+These template comments don't show up in the served page. They are for you, the web site owner.
+You should copy this file to default.html for reference. Have fun theming your new web site!
+
+-->
+<html>
+<head>
+
+  <!-- ./static/favicon.ico gets served as /favicon.ico, same as robots.txt -->
+  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+   <style>
+		a {
+			text-decoration: none;
+			color: grey;
+		}
+		label{
+			font-size: 80%;
+		}
+		pre.fortune{
+			color: lightgrey;
+			font-size: larger;
+			max-height: 300px;
+			overflow: auto;
+
+		}
+</style>
+</head>
+
+<body style="text-align:center; margin: 10px;">
+
+  <h1> <a style="color: grey; text-decoration: none;" href="https://github.com/aerth/cosgo">cosgo</a></h1>
+  <h2 style="color: grey;">contact form server</h2>
+
+
+  <!-- keep this near your form --> <a name="contact"></a>
+
+<!-- display status if exists -->{{if .Status }}<p style="color: purple;">{{.Status}}</p>
+{{if eq .Status "Thanks! Your message was sent."}}<a style="color:blue;" href="/">Return</a>{{else}}<p>Try <a href="/">again</a>?</p>{{end}}
+{{else}}
+<!-- if no status, show form and fortune -->
+
+
+<!-- mandatory csrf and captcha with optional audio and subject -->
+<form id="contact-form" action="/{{.Key}}/send" method="POST">
+    <label>Email: <input type="text" name="email" placeholder="you@yours.com" required/></label><br/>
+    <label>Subject: <input type="text" name="subject" placeholder="what a cool contact form"/></label><br/>
+    <label>Message: <textarea name="message" placeholder="i use cosgo! thanks!" required/></textarea></label><br/>
+    {{ .csrfField }}
+
+
+    <p><img id="image" src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
+
+    <a href="#contact" onclick="reload()">Reload Code</a> | <a href="#" onclick="playAudio()">Play Audio</a>
+    <br>
+
+    <audio id="audio" controls style="display:none;text-align:center;" src="/captcha/{{.CaptchaId}}.wav" preload=none>
+      You are using a text-based browser. The audio captcha will not play here.
+      <a href="/captcha/download/{{.CaptchaId}}.wav">Download file</a> to play it in the external player.
+    </audio>
+    <input type=hidden name=captchaId value="{{.CaptchaId}}" /><br>
+    <input name=captchaSolution placeholder="Enter the code to proceed" />
+
+    <input id="contact-submit" type="submit" value="Say hello!" />
+</form>
+{{end}}
+
+<!-- random quote from fortunes.txt if exists -->
+{{if .Status}}{{else}}{{if .Fortune}}<pre id="fortune" class="fortune">
+{{.Fortune}}</pre>{{end}}{{end}}
+
+
+<!-- human friendly uptime -->
+<pre style="text-align: left; position: absolute; bottom: 0px; left: 10px;">
+{{.Hits}} visitors since we booted {{printf "%s" (timesince .Boottime)}}.
+</pre>
+<!-- this shows gpg info if we are using -gpg flag.
+	 ok to remove if you want to keep that private. -->
+{{if .PublicKey}}
+<pre style="text-align: left; position: absolute; bottom: 20px; left: 10px;">
+Your message will automatically be encrypted with GPG.
+You can <b>encrypt your message before sending</b> as an extra precaution.
+Download public key <a href="/pub.asc">here</a>.{{end}}
+</pre>
+
+<pre style="text-align: right; position: absolute; bottom: 0px; right: 10px;">
+<!-- You probably don't want to display your cosgo version on *your* instance. -->{{if .Status}}{{else}}{{if .Version}}cosgo {{.Version}}{{end}}{{end}}
+<!-- Show link to source code (totally ok to remove) --><a style="color: blue;" href="https://github.com/aerth/cosgo">Open Source Free Software</a> by <a style="color: blue;" href="https://aerth.github.io">aerth</a></pre>
+
+<!-- you can remove all this silly javascript if you need, its for reloading CAPTCHA , playing audio and changing language. -->
+<script>
+function setSrcQuery(e, q) {
+  var src  = e.src;
+  var p = src.indexOf('?');
+  if (p >= 0) {
+    src = src.substr(0, p);
+  }
+  e.src = src + "?" + q
+}
+function playAudio() {
+
+  var e = document.getElementById('audio')
+
+  e.style.display = 'inline';
+  e.autoplay = 'true';
+  return false;
+}
+function changeLang() {
+  var e = document.getElementById('audio')
+  if (e.style.display == 'block') {
+    playAudio();
+  }
+}
+function reload() {
+  setSrcQuery(document.getElementById('image'), "reload=" + (new Date()).getTime());
+  setSrcQuery(document.getElementById('audio'), (new Date()).getTime());
+  return false;
+}
+</script>
+
+</body>
+</html>
+{{end}}

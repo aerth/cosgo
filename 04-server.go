@@ -31,6 +31,7 @@ func (c *Cosgo) pubkeyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Cosgo) homeHandler(w http.ResponseWriter, r *http.Request) {
+
 	hitcounter = hitcounter + 1
 	c.Visitors = hitcounter
 	if !*quiet {
@@ -82,6 +83,11 @@ func (c *Cosgo) homeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(templateerr)
 		fmt.Fprintf(w, "We are experiencing some technical difficulties. Please come back soon!")
 	} else {
+		// get current URLKey to insert into template
+		c.rw.RLock()
+		postkey := c.URLKey
+		c.rw.RUnlock()
+
 		data := map[string]interface{}{
 			"Now":            nowtime,             // Now
 			"Status":         status,              // notify of form success or fail
@@ -92,7 +98,7 @@ func (c *Cosgo) homeHandler(w http.ResponseWriter, r *http.Request) {
 			"Fortune":        fortune,             // random fortune from fortunes.txt
 			"Title":          c.Name,              // Site Name from config
 			"PublicKey":      string(c.publicKey), // GPG key
-			"Key":            c.getKey(),          // POST URL key
+			"Key":            postkey,             // POST URL key
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"CaptchaId":      captcha.NewLen(CaptchaLength + rand.Intn(CaptchaVariation)),
 		}
@@ -160,15 +166,20 @@ func (c *Cosgo) emailHandler(rw http.ResponseWriter, r *http.Request) {
 
 	// Sendgrid?
 	if *sendgridKey != "" {
+		log.Println("Sending to sendgrid")
 		str, ok := c.sendgridder(mailform)
 		if str != "" {
-			log.Println(str)
+			// Log output
+			log.Println("Error", str)
 		}
+		// Sendgrid is not responding, or we are offline.
 		if !ok {
 			log.Printf("FAILURE-contact: %q at %s\n\t%q", r.UserAgent(), r.RemoteAddr, r.Form)
 			srvError(r, rw, 5)
 			return
 		}
+
+		// Message was sent with sendgrid
 		log.Printf("SUCCESS-contact: %s at %s", r.UserAgent(), r.RemoteAddr)
 		srvSuccess(r, rw, 1)
 		inboxcount++

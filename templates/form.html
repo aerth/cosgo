@@ -1,0 +1,19 @@
+{{define "dummy"}}
+<!-- This is a minimal template for cosgo! -->
+<!DOCTYPE html>
+<form id="contact-form" action="/{{.Key}}/send" method="POST">
+
+    <input type="text" name="email" placeholder="email" required/><br/>
+    <input type="text" name="message" placeholder="message" required/><br/>
+    {{ .csrfField }}
+
+    <p><img id=image src="/captcha/{{.CaptchaId}}.png" alt="Captcha image"></p>
+
+    <a href="#" onclick="reload()">Reload Code</a>
+    <br>
+    <input type=hidden name=captchaId value="{{.CaptchaId}}"><br>
+    <input name=captchaSolution placeholder="Enter the code to proceed" required>
+
+    <input id="contact-submit" type="submit" value="Say hello!" />
+</form>
+{{end}}

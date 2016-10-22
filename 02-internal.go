@@ -24,6 +24,12 @@ func openLogFile() {
 	if *logfile == "" {
 		return
 	}
+	if *logfile == "stdout" {
+		*logfile = os.Stdout.Name()
+	}
+	if *logfile == "stderr" {
+		*logfile = os.Stderr.Name()
+	}
 	f, ferr := os.OpenFile(*logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if ferr != nil {
 		log.Printf("error opening file: %v", ferr)
@@ -31,6 +37,7 @@ func openLogFile() {
 		os.Exit(1)
 	}
 	log.SetOutput(f)
+
 }
 
 func (c *Cosgo) initialize() error {
@@ -145,13 +152,13 @@ func (c *Cosgo) getDestination() string {
 func read2mem(abspath string) []byte {
 	file, ferr := os.Open(abspath) // For read access.
 	if ferr != nil {
-		log.Fatal(ferr)
+		log.Fatal("Cosgo fatal:", ferr)
 	}
 
 	var data []byte
 	i, rerr := file.Read(data)
 	if rerr != nil {
-		log.Fatal(rerr)
+		log.Fatal("Cosgo fatal:", rerr)
 	}
 
 	return data[:i]

@@ -59,11 +59,11 @@ Releases:
 Building from source:
 
 ```
-# Grab latest source code ( also check https://isupon.us )
+# Grab latest source code ( also check https://isupon.us for more info )
 git clone https://github.com/aerth/cosgo.git && cd cosgo
 # make deps # optional, cosgo comes with vendor directory.
 # Build a static binary
-CGO_ENABLED=0 make
+make
 
 # Install to /usr/local/bin/cosgo
 sudo make install
@@ -75,14 +75,25 @@ sudo make install
 ## Theme
 
 Customize the theme by modifying ./templates/index.html and ./templates/error.html
-Included in the binary is the bare minimal.
+Included in the binary is the *bare minimal* and is not intended to look very fancy.
 If they don't exist, the templates and static directories will be created where you run cosgo from. (since v0.9)
-Upload your static .css .js .png .jpeg .woff and .ttf files in ./static/ like /static/{foldername}/whatever.css, they will be available like any typical static file server. 
-Some web design themes look in /assets, which won't be served by cosgo. `s/assets/static/g` 
+You can upload your static .css .js .png .jpeg .woff and .ttf files in ./static/foldername/file
+You can include them in your templates as /static/{foldername}/whatever.css
+They will be available like any typical static file server. 
+Some web design themes look in /assets, which won't be served by cosgo. You can use the -static flag to change this.
 
-cp favicon into static/ too. it will be served as if it were located at /favicon.ico
+Copy favicon.ico into static/. it will be served as if it were located at /favicon.ico
 
-cp robot.txt into static/ too. it will be served at /robots.txt
+Also copy robot.txt into static/, it will be served at /robots.txt
+
+/static
+/static/js/jquery.js
+/static/css/style.css
+/static/favicon.ico
+/static/robots.txt
+
+/templates/index.html
+/templates/error.html
 
 -------
 
