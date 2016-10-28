@@ -27,6 +27,7 @@ func (c *Cosgo) pubkeyHandler(w http.ResponseWriter, r *http.Request) {
 		redirecthomeHandler(w, r)
 		return
 	}
+	w.Header().Set("Content-Type", "text/plain")
 	w.Write(c.publicKey)
 }
 
