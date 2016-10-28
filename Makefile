@@ -51,7 +51,7 @@ debug:
 	go fmt
 	mkdir -p bin
 	CGO_ENABLED=1	go build -v -x -tags debug ${DEBUGLDFLAGS} -o bin/${NAME}-v${DEBUG}
-build: fortune
+build:
 	set -e
 	go fmt
 	mkdir -p bin
