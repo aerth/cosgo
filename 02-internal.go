@@ -26,10 +26,15 @@ func openLogFile() {
 	}
 	if *logfile == "stdout" {
 		*logfile = os.Stdout.Name()
+		log.SetOutput(os.Stdout)
+		return
 	}
 	if *logfile == "stderr" {
 		*logfile = os.Stderr.Name()
+		log.SetOutput(os.Stderr)
+		return
 	}
+
 	f, ferr := os.OpenFile(*logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if ferr != nil {
 		log.Printf("error opening file: %v", ferr)

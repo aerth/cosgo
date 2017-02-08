@@ -80,7 +80,7 @@ var (
 	nolog          = flag.Bool("nolog", false, "Logging: Logs to /dev/null")
 	fastcgi        = flag.Bool("fastcgi", false, "Use fastcgi (for with nginx etc)")
 	secure         = flag.Bool("secure", false, "HTTPS only.")
-	logfile        = flag.String("log", "stderr", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
+	logfile        = flag.String("log", "stdout", "Logging: Use a log `file` instead of stdout\n\tExample: cosgo -log cosgo.log -debug\n")
 	cookie         = flag.String("cookie", "cosgo", "Custom cookie+form field name\n")
 	gpg            = flag.String("gpg", "", "GPG: Path to ascii-armored `public-key` to encrypt mbox\n)")
 	sendgridKey    = flag.String("sg", "", "Sendgrid: Sendgrid API `key` (disables mbox)\n")
