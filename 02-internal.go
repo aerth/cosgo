@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -357,24 +359,27 @@ func newfortune() string {
 var fortunes = map[int]string{}
 
 func fortuneInit() {
-	file, err := os.Open("fortunes.txt")
+	_, err := os.Open("fortunes.txt")
 	if err != nil {
 		if !*quiet {
 			log.Println("No 'fortunes.txt' file.")
 		}
 		return
 	}
-	var b []byte
-	n, err := file.Read(b)
+
+	b, err := ioutil.ReadFile("fortunes.txt")
 	if err != nil {
-		log.Println("Fortunes:", err)
+		if !*quiet {
+			log.Println("Fortunes:", err)
+		}
 		return
 	}
-	str := string(b[:n])
-	scanner := bufio.NewScanner(strings.NewReader(str))
+
+	scanner := bufio.NewScanner(strings.NewReader(string(b)))
 	var i = 1
 	var buf string
 	for scanner.Scan() {
+		fmt.Println(scanner.Text())
 		if scanner.Text() == "" {
 			if buf != "" {
 
