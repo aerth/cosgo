@@ -255,44 +255,43 @@ func main() {
 			}
 		}()
 	}
+	for {
+		select {
+		// Fire up the cosgo engine
 
-	select {
-
-	// Fire up the cosgo engine
-
-	case <-time.After(*refreshTime):
-		cosgo.rw.Lock()
-		if *debug && !*quiet {
-			log.Println("Info: Generating Random 40 URL Key...")
-		}
-		t1 := time.Now()
-		// set a random URL key (40 char length).
-		kee := generateURLKey(40)
-		cosgo.URLKey = kee
-		if *debug && !*quiet {
-			log.Printf("Generated URL Key %q in %v", cosgo.URLKey, time.Now().Sub(t1))
-		}
-		cosgo.rw.Unlock()
-
-		// every X minutes change the URL key (default 42 minutes)
-		// break tests uncomment next line
-		//*refreshTime = time.Nanosecond
-
-		if !*quiet {
-			log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
-			log.Printf("Hits: %v", hitcounter)
-			log.Printf("Messages: %v", inboxcount)
-			if *debug {
-				log.Printf("Port: %v", cosgo.Port)
+		case <-time.After(*refreshTime):
+			cosgo.rw.Lock()
+			if *debug && !*quiet {
+				log.Println("Info: Generating Random 40 URL Key...")
 			}
-			if *path2cert != "" {
-				log.Println("TLS: ON")
+			t1 := time.Now()
+			// set a random URL key (40 char length).
+			kee := generateURLKey(40)
+			cosgo.URLKey = kee
+			if *debug && !*quiet {
+				log.Printf("Generated URL Key %q in %v", cosgo.URLKey, time.Now().Sub(t1))
 			}
-		}
+			cosgo.rw.Unlock()
 
+			// every X minutes change the URL key (default 42 minutes)
+			// break tests uncomment next line
+			//*refreshTime = time.Nanosecond
+
+			if !*quiet {
+				log.Printf("Uptime: %s (%s)", time.Since(timeboot), humanize(time.Since(timeboot)))
+				log.Printf("Hits: %v", hitcounter)
+				log.Printf("Messages: %v", inboxcount)
+				if *debug {
+					log.Printf("Port: %v", cosgo.Port)
+				}
+				if *path2cert != "" {
+					log.Println("TLS: ON")
+				}
+			}
+			// loop
+		}
 	}
 }
-
 func init() {
 	// Key Generator
 	rand.Seed(time.Now().UnixNano())
