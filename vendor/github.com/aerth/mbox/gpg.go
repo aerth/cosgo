@@ -40,37 +40,28 @@ Accept an email, populate the mbox.Form struct like this:
 package mbox
 
 import (
-
-	//	"fmt"
+	"bytes"
+	"io/ioutil"
+	"log"
 	"net/url"
-	"os"
-	"path"
-	"path/filepath"
 	"strings"
-	"time"
-	// email validation
+
+	"golang.org/x/crypto/openpgp"       // pgp support
+	"golang.org/x/crypto/openpgp/armor" // armorized public key
+
+	//"github.com/goware/emailx"           // email validation
 	"github.com/microcosm-cc/bluemonday" // input sanitizaation
 )
 
-// Form is a single email. No Attachments yet.
-type Form struct {
-	From, Subject, Message string
-	Sent, Received                      time.Time
-	Body []byte
+// ParseFormGPG parses a url submitted query and returns a mbox.Form
+func ParseFormGPG(destination string, query url.Values, publicKey []byte) (form *Form) {
+	Destination = destination
+	form = ParseQueryGPG(query, publicKey)
+	return form
 }
 
-var (
-	// ValidationLevel should be set to something other than 1 to resolve hostnames and validate emails
-	ValidationLevel = 1
-	// Destination is the address where mail is "sent", its useful to change this to the address you will be replying to.
-	Destination = "mbox@localhost"
-
-	// Mail is the local mbox, implemented as a logger
-	Mail *os.File
-)
-
-// ParseQuery returns a mbox.Form from url.Values
-func ParseQuery(query url.Values) *Form {
+// ParseQueryGPG returns a mbox.Form from a url.Values but encodes the form.Message if publicKey is not nil
+func ParseQueryGPG(query url.Values, publicKey []byte) *Form {
 	p := bluemonday.StrictPolicy()
 	form := new(Form)
 	additionalFields := ""
@@ -100,16 +91,56 @@ func ParseQuery(query url.Values) *Form {
 		}
 	}
 
+	if publicKey != nil {
+		tmpmsg, err := PGPEncode(form.Message, publicKey)
+		if err != nil {
+			log.Println("gpg error.")
+			log.Println(err)
+		} else {
+
+			form.Message = tmpmsg
+		}
+
+	}
 	return form
 }
 
-// rel2real Relative to Real path name
-func rel2real(file string) (realpath string) {
-	pathdir, _ := path.Split(file)
-	if pathdir == "" {
-		realpath, _ = filepath.Abs(file)
-	} else {
-		realpath = file
+// PGPEncode handles the actual encrypting of the message. Outputs ascii armored gpg message or an error.
+func PGPEncode(plain string, publicKey []byte) (encStr string, err error) {
+
+	entitylist, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(publicKey))
+	if err != nil {
+		return "", err
 	}
-	return realpath
+	buf := new(bytes.Buffer)
+
+	abuf, err := armor.Encode(buf, "PGP MESSAGE", map[string]string{
+		"Version": "OpenPGP",
+	})
+	if err != nil {
+		return "", err
+	}
+	w, err := openpgp.Encrypt(abuf, entitylist, nil, nil, nil)
+	defer w.Close()
+	if err != nil {
+		return "", err
+	}
+	defer w.Close()
+	_, err = w.Write([]byte(plain))
+	if err != nil {
+		return "", err
+	}
+
+	err = w.Close()
+
+	if err != nil {
+		return "", err
+	}
+	abuf.Close()
+
+	bytes, err := ioutil.ReadAll(buf)
+
+	encStr = string(bytes)
+
+	return encStr, nil
 }
