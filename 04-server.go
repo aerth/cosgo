@@ -160,7 +160,7 @@ func (c *Cosgo) emailHandler(rw http.ResponseWriter, r *http.Request) {
 	mailform := mbox.ParseFormGPG(c.Destination, r.Form, c.publicKey)
 
 	// quick offline email address validation
-	if mailform.Email == "@" || mailform.Email == " " || !strings.ContainsAny(mailform.Email, "@") || !strings.ContainsAny(mailform.Email, ".") {
+	if mailform.From == "@" || mailform.From == " " || !strings.ContainsAny(mailform.From, "@") || !strings.ContainsAny(mailform.From, ".") {
 		srvError(r, rw, 4)
 		return
 	}

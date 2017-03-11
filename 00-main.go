@@ -173,7 +173,7 @@ func setup() *Cosgo {
 		cosgo.Destination = *dest
 	}
 	mbox.Destination = cosgo.Destination
-	mbox.Mail = log.New(f, "", 0)
+	mbox.Mail = f
 
 	go fortuneInit() // Spin fortunes
 
