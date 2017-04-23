@@ -159,21 +159,13 @@ func setup() *Cosgo {
 	if *sendgridKey != "" {
 		*mboxfile = os.DevNull
 	}
-
-	// Open mbox or dev/null
-	f, ferr := os.OpenFile(*mboxfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	if ferr != nil {
-		log.Printf("error opening file: %v", ferr)
-		log.Fatal("Hint: touch ./cosgo.mbox, or chown/chmod it so that the cosgo process can access it.")
-		os.Exit(1)
-	}
+	mbox.Destination = cosgo.Destination
+	mbox.Open(*mboxfile)
 
 	// Set destination email for mbox and sendgrid
 	if *dest != "" {
 		cosgo.Destination = *dest
 	}
-	mbox.Destination = cosgo.Destination
-	mbox.Mail = f
 
 	go fortuneInit() // Spin fortunes
 
